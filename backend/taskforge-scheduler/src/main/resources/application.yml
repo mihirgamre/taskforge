@@ -7,6 +7,12 @@ spring:
     open-in-view: false
   flyway:
     enabled: true
+  kafka:
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    admin:
+      auto-create: true
 management:
   endpoints:
     web:
@@ -14,4 +20,6 @@ management:
         include: health,info,prometheus
 server:
   shutdown: graceful
-
+taskforge:
+  scheduler:
+    poll-delay-ms: 1000

@@ -19,7 +19,8 @@ Selections were checked on 2026-08-09 against official project release pages or 
 | Vitest | 4.1.10 | Current stable Vitest line with Vite 8 support. |
 | Playwright | 1.62.1 | Selected after audit flagged vulnerable versions below 1.55.1. |
 | Docker | 29.7.2 observed locally | Compose specification is used instead of a pinned legacy compose file version. |
-| Flyway | Managed by Spring Boot 4.1.0 | Keeps Flyway aligned with Spring Boot dependency management. |
+| Flyway | Managed by Spring Boot 4.1.0 through `spring-boot-starter-flyway` | Boot 4 modularizes Flyway auto-configuration; the starter is required so migrations run before Hibernate validation. |
+| Spring Kafka | Managed by Spring Boot 4.1.0 through `spring-boot-starter-kafka` | Boot 4 modularizes Kafka auto-configuration; the starter provides `KafkaTemplate` and listener container wiring. |
 | JUnit | Managed by Spring Boot 4.1.0 | Spring Boot 4.1 manages JUnit 6.x compatible test stack. |
 | Testcontainers | 1.21.4 | Current Maven Central version for the Java coordinates used here (`org.testcontainers:junit-jupiter`, `postgresql`, `kafka`). |
 

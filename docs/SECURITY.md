@@ -4,7 +4,10 @@
 
 - `.gitignore` excludes common secret, environment, log, dependency, and build-output files.
 - `.env.example` contains development-only placeholder values.
-- Control plane permits only the foundation endpoint and health checks anonymously; all other endpoints require authentication once implemented.
+- Control plane exposes the Phase 1 no-op task endpoints without authentication for local development.
+- Phase 1 task reads require `X-Tenant-Id` and query by both task id and tenant id.
+- Phase 1 API errors return sanitized error bodies for malformed JSON, invalid UUIDs, missing tenant headers, and missing tasks.
+- Control plane disables generated default Spring Security credentials in Phase 1 so startup logs do not contain a development password.
 - Documentation explicitly forbids fabricated security claims and secret commits.
 
 ## Planned
@@ -22,5 +25,4 @@
 
 ## Current Limits
 
-No production authentication, authorization, secret storage, task execution, or tenant isolation code exists yet. Those controls are planned, not implemented.
-
+No production authentication, organization membership, RBAC, secret storage, or cryptographic tenant authorization exists yet. Phase 1 tenant isolation is limited to explicit tenant-header scoping in the task API and repository query; it is not a production security boundary.

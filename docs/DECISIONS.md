@@ -14,4 +14,5 @@ This file summarizes current accepted architectural decisions. Full records live
 - Frontend uses React, TypeScript, and Vite.
 - Deployment direction is ECS Fargate rather than Kubernetes.
 - Phase 0 intentionally excludes product workflow behavior.
-
+- Phase 1 intentionally implements a no-op task slice before workflow runs/DAGs so the API, PostgreSQL, scheduler, Kafka, and worker boundaries are proven with minimal domain complexity.
+- Shared schema migrations live in `taskforge-domain` so every backend service validates the same Flyway migration history.

@@ -19,4 +19,94 @@ paths:
                     type: string
                   version:
                     type: string
-
+  /api/tasks/noop:
+    post:
+      summary: Creates one no-op task for the Phase 1 execution slice.
+      parameters:
+        - name: X-Tenant-Id
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                description:
+                  type: string
+                  maxLength: 500
+      responses:
+        '201':
+          description: Task created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+        '400':
+          description: Invalid tenant header or malformed request body.
+  /api/tasks/{id}:
+    get:
+      summary: Reads one task by id within the tenant header scope.
+      parameters:
+        - name: X-Tenant-Id
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 1
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Task found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+        '404':
+          description: Task not found for tenant.
+components:
+  schemas:
+    TaskResponse:
+      type: object
+      required: [id, tenantId, taskType, status, attemptCount, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenantId:
+          type: string
+        taskType:
+          type: string
+          enum: [NO_OP]
+        status:
+          type: string
+          enum: [PENDING, DISPATCHED, SUCCEEDED, FAILED]
+        description:
+          type: string
+          nullable: true
+        attemptCount:
+          type: integer
+          minimum: 0
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        dispatchedAt:
+          type: string
+          format: date-time
+          nullable: true
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true

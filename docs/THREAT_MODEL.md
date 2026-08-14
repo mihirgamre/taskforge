@@ -26,15 +26,16 @@
 
 - No arbitrary code, shell, or user container execution exists.
 - No secret material is present in repository defaults.
-- No product endpoints exist yet beyond foundation metadata.
+- Phase 1 task reads are scoped by task id plus `X-Tenant-Id`.
+- Phase 1 does not execute arbitrary user code or external HTTP calls.
 
 ## Planned Mitigations
 
 - Tenant authorization at service boundaries and repository queries.
+- Authentication-backed tenant identity; the current `X-Tenant-Id` header is only a development placeholder.
 - Transactional outbox, processed-event records, and idempotent consumers.
 - Durable worker leases in PostgreSQL.
 - Request validation, payload limits, and explicit error models.
 - Secret encryption, masking, and redaction tests.
 - Restricted HTTP destination validation for future HTTP tasks.
 - Security headers, CORS/CSRF controls, and rate limits.
-

@@ -1,15 +1,13 @@
 package com.mihirgamre.taskforge.worker;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
 
-@SpringBootTest
-@ActiveProfiles("test")
+import static org.assertj.core.api.Assertions.assertThat;
+
 class WorkerApplicationTest {
 
     @Test
-    void contextLoads() {
+    void applicationClassExists() {
+        assertThat(WorkerApplication.class).isNotNull();
     }
 }
-

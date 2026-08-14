@@ -7,6 +7,12 @@ spring:
     open-in-view: false
   flyway:
     enabled: true
+  kafka:
+    consumer:
+      group-id: taskforge-worker
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
 management:
   endpoints:
     web:
@@ -14,4 +20,6 @@ management:
         include: health,info,prometheus
 server:
   shutdown: graceful
-
+taskforge:
+  worker:
+    dispatch-topic: taskforge.task-dispatch.v1

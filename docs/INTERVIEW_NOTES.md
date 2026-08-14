@@ -30,3 +30,48 @@ Likely interview questions:
 
 My explanation in plain English:
 
+---
+
+# Phase 1 - One-Task Vertical Execution Slice
+
+Feature:
+Minimal no-op task execution across the control plane, scheduler, Kafka, worker, and PostgreSQL.
+
+Problem:
+Before building workflow DAGs, TaskForge needs proof that the core service boundaries can move one durable piece of work through the system.
+
+Why the problem matters:
+Most risk in this project is not drawing workflow boxes. It is durable state, safe background dispatch, duplicate delivery, and honest failure handling.
+
+Our solution:
+The control plane creates a tenant-scoped `NO_OP` task in PostgreSQL. The scheduler claims a pending task in a transaction, marks it `DISPATCHED`, and publishes its id to Kafka. The worker consumes that id and marks the task `SUCCEEDED`.
+
+Execution flow:
+`POST /api/tasks/noop` creates `PENDING`. Scheduler locks the oldest pending row and changes it to `DISPATCHED`. Kafka carries the task id to the worker. Worker completes only tasks currently in `DISPATCHED`. `GET /api/tasks/{id}` reads the task by id and tenant header.
+
+Why we chose this design:
+PostgreSQL is the durable source of truth, so task state survives process and Kafka restarts. Kafka decouples work discovery from work execution and keeps the worker boundary asynchronous without introducing workflow DAG complexity yet.
+
+Alternatives considered:
+A synchronous control-plane-to-worker call would be simpler but would not prove the event-driven worker boundary. An immediate transactional outbox would be more reliable but belongs to the reliability phase and would add more concepts before the basic slice is proven.
+
+Trade-offs:
+The slice is intentionally small. It does not include workflow runs, leases, retries, idempotent inbox records, user authentication, or a versioned event envelope.
+
+Failure modes:
+If Kafka publish fails synchronously after a task is marked `DISPATCHED`, the scheduler returns the task to `PENDING` unless it has already reached a terminal state. If the scheduler crashes after committing `DISPATCHED` but before publishing to Kafka, Phase 1 can leave the task stuck. Phase 3 transactional outbox will solve this by storing the outbound event in the same database transaction as the state change and retrying publication until acknowledged.
+
+How we tested it:
+Unit and MVC tests cover task creation, retrieval, bad API input, state transitions, scheduler no-work behavior, scheduler rollback behavior, worker duplicate delivery behavior, malformed task ids, missing task ids, and wrong task states. A PostgreSQL/Testcontainers test verifies two simultaneous scheduler claims do not claim the same task. Docker Compose smoke tests verify the live API-to-database-to-Kafka-to-worker path.
+
+Measured results:
+No performance measurements exist yet. The verified result is functional correctness for the Phase 1 smoke path.
+
+Important files/classes:
+`TaskExecution`, `TaskExecutionRepository`, `TaskCommandService`, `TaskController`, `TaskClaimService`, `TaskDispatchService`, `NoOpTaskWorker`, `TaskCompletionService`, and Flyway migration `V2__phase1_task_execution.sql`.
+
+Likely interview questions:
+Why is PostgreSQL the source of truth instead of Kafka? What prevents two schedulers from claiming one task? What happens on duplicate Kafka delivery? What happens if publish fails after the database commit? Why not implement the outbox immediately? How would Phase 3 change this design?
+
+My explanation in plain English:
+Phase 1 proves the smallest reliable path through the backend. The database owns truth, Kafka moves work between services, and each service owns one clear responsibility. The design is intentionally not finished: the direct publish failure window is real and documented, and the next reliability phase will close it with a transactional outbox and idempotent consumers.

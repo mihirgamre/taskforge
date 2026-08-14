@@ -6,7 +6,11 @@ Create the professional monorepo, documentation, dependency decisions, backend/f
 
 ## Phase 1 - One-Task Vertical Execution Slice
 
-Implement the smallest complete durable execution path: create a workflow version, trigger a run, insert root task/outbox record, publish Kafka event, worker claims and completes task, run succeeds, frontend displays result.
+Status: implemented as a deliberately smaller slice than the long-term workflow target.
+
+Implemented: create one tenant-scoped no-op task through the control-plane API, persist it in PostgreSQL, dispatch it through the scheduler to Kafka, complete it in the worker, and read final state through the API.
+
+Deferred to later phases: workflow versions, run records, DAG execution, transactional outbox, durable leases, idempotent inbox records, and frontend result display.
 
 ## Phase 2 - Workflow DAG Engine
 
@@ -71,4 +75,3 @@ Add image builds, SBOMs, vulnerability scanning, migration safety checks, smoke 
 ## Phase 17 - Portfolio Polish
 
 Finalize README, diagrams, screenshots, demo plan, honest metrics, known limitations, and resume-ready claims backed by evidence.
-

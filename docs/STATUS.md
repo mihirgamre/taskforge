@@ -4,7 +4,7 @@ Last updated: 2026-08-14
 
 ## Current Phase
 
-Phase 0 - repository and development foundation.
+Phase 1 - one-task vertical execution slice.
 
 ## Implemented
 
@@ -15,16 +15,23 @@ Phase 0 - repository and development foundation.
 - Local Docker Compose infrastructure definition for PostgreSQL, Redis, Kafka, backend services, and frontend.
 - Initial architecture, dependency, roadmap, security, threat model, testing, interview-notes, and ADR documentation.
 - Minimal GitHub Actions CI workflow.
+- Minimal one-task execution slice:
+  - `POST /api/tasks/noop` creates a tenant-scoped `NO_OP` task in PostgreSQL.
+  - Scheduler claims the oldest `PENDING` task, marks it `DISPATCHED`, and publishes the task id to Kafka topic `taskforge.task-dispatch.v1`.
+  - Worker consumes the dispatch message and marks the task `SUCCEEDED`.
+  - `GET /api/tasks/{id}` reads task state scoped by `X-Tenant-Id`.
+- Shared Flyway migrations now live in `taskforge-domain` so control plane, scheduler, and worker validate the same schema.
 
 ## Not Implemented Yet
 
-- Authentication, organizations, RBAC, workflow CRUD, workflow execution, scheduling, worker task handling, transactional outbox, live updates, secrets, audit logs, load testing, observability dashboards, and AWS infrastructure.
+- Authentication, organizations, RBAC, workflow CRUD, DAG execution, durable transactional outbox, worker leases, retries, dead-letter handling, live updates, secrets, audit logs, load testing, observability dashboards, and AWS infrastructure.
 
 ## Verification Notes
 
 Backend checks pass:
 
 - `cd backend && .\mvnw.cmd verify`
+- Latest Phase 1 backend verification after adversarial review: 32 tests, 0 failures, 0 errors, 0 skipped.
 
 Frontend checks pass:
 
@@ -45,5 +52,16 @@ Docker Compose checks pass:
 - `docker compose exec -T kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list`
 - HTTP health checks for control plane, scheduler, and worker all returned status `UP`.
 - Frontend returned HTTP 200 on `http://localhost:5173/`.
+- Phase 1 live smoke passed on 2026-08-14:
+  - Created task `ff65492f-171f-4802-b22f-0dcad75b3e8e`.
+  - Observed `PENDING -> DISPATCHED -> SUCCEEDED`.
+  - Durable row recorded `attempt_count = 1`, `dispatched_at`, and `completed_at`.
 
-GitHub CLI is installed outside the default PATH at `C:\Program Files\GitHub CLI\gh.exe`. Remote creation and push are pending final GitHub verification.
+## Adversarial Review Notes
+
+- Defect fixed: terminal tasks can no longer be moved back to `PENDING` by a late scheduler rollback path.
+- Added explicit API handling for malformed JSON, missing tenant headers, invalid UUID path values, and `ResponseStatusException`.
+- Added PostgreSQL/Testcontainers concurrency verification proving two simultaneous scheduler claims do not claim the same task.
+- Current documented limitation remains: Phase 1 does not have a transactional outbox. If the scheduler commits `DISPATCHED` and the process dies before Kafka publish, the task can remain stuck until Phase 3 introduces outbox/reconciliation.
+
+GitHub repository exists at `https://github.com/mihirgamre/taskforge`. Phase 1 changes are not committed yet.
