@@ -1,0 +1,17 @@
+spring:
+  application:
+    name: taskforge-worker
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+server:
+  shutdown: graceful
+

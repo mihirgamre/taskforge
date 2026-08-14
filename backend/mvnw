@@ -1,0 +1,7 @@
+#!/bin/sh
+set -e
+BASEDIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+if [ -f "$BASEDIR/.mvn/wrapper/maven-wrapper.jar" ]; then
+  exec java -classpath "$BASEDIR/.mvn/wrapper/maven-wrapper.jar" "-Dmaven.multiModuleProjectDirectory=$BASEDIR" org.apache.maven.wrapper.MavenWrapperMain "$@"
+fi
+exec mvn "$@"

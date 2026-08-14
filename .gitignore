@@ -1,0 +1,51 @@
+# Operating systems and editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.jks
+
+# Logs and runtime data
+*.log
+logs/
+tmp/
+temp/
+
+# Dependencies
+node_modules/
+
+# Java and Maven
+target/
+.mvn/timing.properties
+
+# Frontend build and test output
+frontend/dist/
+frontend/coverage/
+frontend/playwright-report/
+frontend/test-results/
+
+# Backend test/build output
+backend/**/target/
+backend/.mvn/timing.properties
+
+# Docker and local data
+.docker/
+docker-data/
+pgdata/
+redis-data/
+kafka-data/
+
+# Coverage and reports
+coverage/
+*.lcov
+
