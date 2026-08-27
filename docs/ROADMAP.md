@@ -1,77 +1,50 @@
 # Roadmap
 
-## Phase 0 - Repository And Development Foundation
+`docs/TASKFORGE_SPEC.md` remains the complete long-term product specification. This roadmap groups implementation into practical milestones without dropping requirements.
 
-Create the professional monorepo, documentation, dependency decisions, backend/frontend foundations, Docker Compose, CI skeleton, and verification baseline.
+## M0 - Foundation + Vertical Slice
 
-## Phase 1 - One-Task Vertical Execution Slice
+Status: COMPLETE.
 
-Status: implemented as a deliberately smaller slice than the long-term workflow target.
+Includes original Phases 0-1: monorepo foundation, backend/frontend foundations, Docker Compose, CI skeleton, and the API -> PostgreSQL -> scheduler -> Kafka -> worker -> PostgreSQL completion path for one no-op task.
 
-Implemented: create one tenant-scoped no-op task through the control-plane API, persist it in PostgreSQL, dispatch it through the scheduler to Kafka, complete it in the worker, and read final state through the API.
+## M1 - Workflow DAG Engine
 
-Deferred to later phases: workflow versions, run records, DAG execution, transactional outbox, durable leases, idempotent inbox records, and frontend result display.
+Status: COMPLETE.
 
-## Phase 2 - Workflow DAG Engine
+Adds workflow definitions, drafts, versions, nodes, edges, DAG validation, cycle detection, immutable published versions, workflow runs bound to published versions, dependency-aware task eligibility, multi-node execution, workflow completion aggregation, and basic failure aggregation.
 
-Add graph modelling, validation, immutable publishing, state transitions, and dependency unlocking.
+## M2 - Reliable Distributed Execution
 
-## Phase 3 - Kafka Reliability, Transactional Outbox, Idempotency
+Combines original Phases 3-5: transactional outbox, reliable Kafka publication, idempotent consumers/inbox, worker leases, heartbeats, expired lease recovery, retries, exponential backoff, dead-letter handling, and distributed concurrency testing.
 
-Harden outbox publisher, consumer inbox, event IDs, correlation/causation IDs, schema versions, and duplicate-delivery tests.
+## M3 - Identity, Tenancy And API Protection
 
-## Phase 4 - Distributed Workers And Leases
+Includes authentication, refresh-token rotation, organizations, membership, RBAC, tenant isolation, Redis-backed rate limiting, and API security.
 
-Support concurrent workers, durable leases, heartbeats, expired-lease recovery, and concurrency tests.
+## M4 - Workflow Product UI
 
-## Phase 5 - Retries And Dead-Letter Handling
+Includes visual workflow builder, workflow management UI, execution graph, run details, live execution updates, approval UX, and responsive/error/loading states.
 
-Add retry policies, backoff, jitter, attempt records, poison-message handling, and dead-letter views.
+## M5 - Automation Capabilities
 
-## Phase 6 - Authentication, Organizations, RBAC
+Includes task handlers, schedules, cron/timezone handling, API keys, workflow API triggers, manual approvals, safe HTTP tasks, transforms, and notification/report tasks.
 
-Add registration, login, refresh-token rotation, organizations, membership roles, audit logging, and cross-tenant authorization tests.
+## M6 - Production Reliability
 
-## Phase 7 - Visual Workflow Builder
+Includes OpenTelemetry, Prometheus, Grafana, structured logging, security hardening, resilience testing, threat-model validation, k6 load testing, performance optimization, and measured results.
 
-Build the editable graph UI, validation feedback, version history, and conflict handling.
+## M7 - Cloud + Portfolio Completion
 
-## Phase 8 - Additional Task Handlers
+Includes AWS, Terraform, ECS/Fargate, RDS, managed Redis/Kafka approach, CI/CD hardening, vulnerability scanning, README, diagrams, screenshots/demo, final interview notes, and verified resume metrics.
 
-Add restricted handlers such as delay, JSON transform, conditional, manual approval, email simulation, report generation, and restricted HTTP.
+## Old Phase Mapping
 
-## Phase 9 - Scheduling And API Triggers
-
-Add one-time and cron schedules, time-zone handling, API keys, scopes, and idempotent trigger requests.
-
-## Phase 10 - Redis Caching And Rate Limiting
-
-Use Redis for non-authoritative caching, rate limiting, and fast idempotency checks with database fallback.
-
-## Phase 11 - Live Execution UI
-
-Add SSE updates, run graph status, approvals inbox, cancellation, retry actions, and dead-letter inspection.
-
-## Phase 12 - Observability
-
-Add OpenTelemetry, Prometheus, Grafana dashboards, structured logs, correlation IDs, and local alerts.
-
-## Phase 13 - Security Hardening
-
-Finish SSRF protections, CSRF/CORS/security headers, secret encryption, redaction tests, dependency scanning, and threat-model review.
-
-## Phase 14 - Performance And Load Testing
-
-Create k6 scenarios and document actual measured results without fabricating targets.
-
-## Phase 15 - AWS Deployment
-
-Add Terraform for ECS Fargate, RDS, Redis, Kafka, S3/CloudFront, KMS, Secrets Manager, and cost-conscious demo settings.
-
-## Phase 16 - CI/CD And Production Hardening
-
-Add image builds, SBOMs, vulnerability scanning, migration safety checks, smoke tests, protected deployments, and rollback behavior.
-
-## Phase 17 - Portfolio Polish
-
-Finalize README, diagrams, screenshots, demo plan, honest metrics, known limitations, and resume-ready claims backed by evidence.
+- M0: Phases 0-1
+- M1: Phase 2
+- M2: Phases 3-5
+- M3: Phases 6 and 10 security/rate-limiting work
+- M4: Phases 7 and 11
+- M5: Phases 8-9 plus approvals and trigger capabilities
+- M6: Phases 12-14
+- M7: Phases 15-17 plus CI/CD hardening from Phase 16

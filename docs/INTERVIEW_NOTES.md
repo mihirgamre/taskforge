@@ -75,3 +75,40 @@ Why is PostgreSQL the source of truth instead of Kafka? What prevents two schedu
 
 My explanation in plain English:
 Phase 1 proves the smallest reliable path through the backend. The database owns truth, Kafka moves work between services, and each service owns one clear responsibility. The design is intentionally not finished: the direct publish failure window is real and documented, and the next reliability phase will close it with a transactional outbox and idempotent consumers.
+
+---
+
+# M1 - Workflow DAG Engine
+
+Feature:
+Versioned workflow DAG execution for `NO_OP` nodes.
+
+Problem:
+A workflow engine must run nodes in dependency order rather than treating every task as independent.
+
+Our solution:
+TaskForge stores workflow drafts, published versions, nodes, edges, runs, and node task executions in PostgreSQL. Published versions are immutable so a historical run always points to the exact graph it used.
+
+Execution flow:
+Publishing validates the draft graph with Kahn's algorithm. Starting a run creates one task per node. Root nodes become `PENDING`; non-root nodes remain `BLOCKED`. The existing scheduler/Kafka/worker path dispatches pending tasks. When a worker succeeds, the completion transaction checks child dependencies and unlocks children whose direct predecessors are all `SUCCEEDED`.
+
+Why we chose this design:
+The graph algorithm is deterministic and unit-testable without HTTP or a database. PostgreSQL constraints protect durable graph and task integrity. A run-level pessimistic lock serializes dependency activation so concurrent fan-in predecessor completions cannot schedule the same child twice.
+
+Trade-offs:
+M1 keeps reliability intentionally basic. It does not add retries, leases, idempotent inbox records, dead-letter handling, or transactional outbox; those remain M2.
+
+Failure modes:
+If a required task fails in M1, the run is marked `FAILED` and descendants stay blocked. If the scheduler crashes after marking a task `DISPATCHED` but before Kafka publish, the known M0/M1 direct-publish failure window remains until M2.
+
+How we tested it:
+Domain tests cover valid linear, fan-out, fan-in, multiple-root DAGs and invalid cycles, self-edges, duplicate edges, missing nodes, duplicate node keys, empty workflows, and published-version immutability. PostgreSQL-backed execution tests exist for linear, fan-out, fan-in, duplicate child scheduling prevention, workflow completion, and failure semantics, but they require Docker/Testcontainers to run.
+
+Measured results:
+No performance measurements exist yet.
+
+Likely interview questions:
+What is a DAG? Why make workflow versions immutable? How are root nodes identified? How does fan-in avoid early execution? What prevents duplicate child scheduling? What remains for the reliability milestone?
+
+My explanation in plain English:
+A workflow is a directed acyclic graph: arrows describe which tasks must finish before others can start. TaskForge validates that graph before publishing, stores the published version permanently, and then creates runnable task rows only when dependencies are satisfied.

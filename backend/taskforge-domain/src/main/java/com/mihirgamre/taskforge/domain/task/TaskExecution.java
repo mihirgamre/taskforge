@@ -29,6 +29,12 @@ public class TaskExecution {
     @Column
     private String description;
 
+    @Column(name = "workflow_run_id")
+    private UUID workflowRunId;
+
+    @Column(name = "workflow_node_key")
+    private String workflowNodeKey;
+
     @Column(name = "attempt_count", nullable = false)
     private int attemptCount;
 
@@ -57,8 +63,49 @@ public class TaskExecution {
         this.updatedAt = now;
     }
 
+    private TaskExecution(
+            UUID id,
+            String tenantId,
+            String description,
+            UUID workflowRunId,
+            String workflowNodeKey,
+            TaskStatus status,
+            Instant now
+    ) {
+        this.id = id;
+        this.tenantId = tenantId;
+        this.taskType = TaskType.NO_OP;
+        this.status = status;
+        this.description = description;
+        this.workflowRunId = workflowRunId;
+        this.workflowNodeKey = workflowNodeKey;
+        this.createdAt = now;
+        this.updatedAt = now;
+    }
+
     public static TaskExecution createNoOp(String tenantId, String description, Instant now) {
         return new TaskExecution(UUID.randomUUID(), tenantId, description, now);
+    }
+
+    public static TaskExecution createWorkflowNoOp(
+            UUID workflowRunId,
+            String workflowNodeKey,
+            String description,
+            TaskStatus status,
+            Instant now
+    ) {
+        if (status != TaskStatus.PENDING && status != TaskStatus.BLOCKED) {
+            throw new IllegalArgumentException("Workflow task must start pending or blocked");
+        }
+        return new TaskExecution(
+                UUID.randomUUID(),
+                "workflow",
+                description,
+                workflowRunId,
+                workflowNodeKey,
+                status,
+                now
+        );
     }
 
     public UUID id() {
@@ -79,6 +126,14 @@ public class TaskExecution {
 
     public String description() {
         return description;
+    }
+
+    public UUID workflowRunId() {
+        return workflowRunId;
+    }
+
+    public String workflowNodeKey() {
+        return workflowNodeKey;
     }
 
     public int attemptCount() {
@@ -115,9 +170,22 @@ public class TaskExecution {
         this.updatedAt = now;
     }
 
+    public void markReady(Instant now) {
+        requireStatus(TaskStatus.BLOCKED, "make ready");
+        this.status = TaskStatus.PENDING;
+        this.updatedAt = now;
+    }
+
     public void markSucceeded(Instant now) {
         requireStatus(TaskStatus.DISPATCHED, "succeed");
         this.status = TaskStatus.SUCCEEDED;
+        this.completedAt = now;
+        this.updatedAt = now;
+    }
+
+    public void markFailed(Instant now) {
+        requireStatus(TaskStatus.DISPATCHED, "fail");
+        this.status = TaskStatus.FAILED;
         this.completedAt = now;
         this.updatedAt = now;
     }

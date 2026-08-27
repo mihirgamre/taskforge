@@ -1,67 +1,42 @@
 # Status
 
-Last updated: 2026-08-14
+Last updated: 2026-08-27
 
-## Current Phase
+## Latest Completed Milestone
 
-Phase 1 - one-task vertical execution slice.
+M1 - Workflow DAG Engine.
+
+## Completed
+
+- M0 foundation and one-task vertical slice are complete and pushed to `main`.
+- Existing Phase 1 path remains: `POST /api/tasks/noop` -> PostgreSQL `PENDING` task -> scheduler claim -> Kafka dispatch -> worker completion -> PostgreSQL `SUCCEEDED`.
 
 ## Implemented
 
-- Master product specification stored at `docs/TASKFORGE_SPEC.md`.
-- Monorepo directory structure.
-- Backend Maven multi-module foundation for control plane, scheduler, and worker service boundaries.
-- Frontend React/TypeScript/Vite shell.
-- Local Docker Compose infrastructure definition for PostgreSQL, Redis, Kafka, backend services, and frontend.
-- Initial architecture, dependency, roadmap, security, threat model, testing, interview-notes, and ADR documentation.
-- Minimal GitHub Actions CI workflow.
-- Minimal one-task execution slice:
-  - `POST /api/tasks/noop` creates a tenant-scoped `NO_OP` task in PostgreSQL.
-  - Scheduler claims the oldest `PENDING` task, marks it `DISPATCHED`, and publishes the task id to Kafka topic `taskforge.task-dispatch.v1`.
-  - Worker consumes the dispatch message and marks the task `SUCCEEDED`.
-  - `GET /api/tasks/{id}` reads task state scoped by `X-Tenant-Id`.
-- Shared Flyway migrations now live in `taskforge-domain` so control plane, scheduler, and worker validate the same schema.
+- Workflow definitions with editable drafts and immutable published versions.
+- Workflow nodes and edges for `NO_OP` tasks.
+- Deterministic DAG validation using Kahn's algorithm.
+- Validation for empty graphs, duplicate nodes, duplicate edges, self-edges, missing node references, and cycles.
+- Workflow runs bound to a published workflow version.
+- Task executions linked to workflow run/node references.
+- Root nodes start `PENDING`; dependent nodes start `BLOCKED`.
+- Worker completion unlocks children only after all direct predecessors succeed.
+- Workflow runs aggregate to `SUCCEEDED` after all tasks succeed, or `FAILED` after a required task fails.
 
-## Not Implemented Yet
+## Known Limitations
 
-- Authentication, organizations, RBAC, workflow CRUD, DAG execution, durable transactional outbox, worker leases, retries, dead-letter handling, live updates, secrets, audit logs, load testing, observability dashboards, and AWS infrastructure.
+- M1 does not implement M2 reliability features: transactional outbox, idempotent inbox, worker leases, retries, dead-letter handling, or recovery for the existing database-to-Kafka crash window.
+- Authentication, organizations, RBAC, Redis rate limiting, visual workflow builder, additional task handlers, schedules, observability, and cloud deployment remain later milestones.
 
 ## Verification Notes
 
-Backend checks pass:
+- `cd backend && .\mvnw.cmd verify`: passed, 48 backend tests.
+- `docker compose config --quiet`: passed.
+- `docker compose up --build -d`: passed.
+- Health checks for control-plane, scheduler, and worker returned `UP`.
+- Live DAG smoke tests passed for linear `A -> B -> C`, fan-out `A -> {B, C}`, and fan-in `{A, B} -> C`.
+- PostgreSQL verification confirmed each smoke-test task reached `SUCCEEDED` with one attempt.
 
-- `cd backend && .\mvnw.cmd verify`
-- Latest Phase 1 backend verification after adversarial review: 32 tests, 0 failures, 0 errors, 0 skipped.
+## Next Milestone
 
-Frontend checks pass:
-
-- `cd frontend && npm.cmd ci`
-- `npm.cmd run lint`
-- `npm.cmd run typecheck`
-- `npm.cmd test -- --run`
-- `npm.cmd run build`
-- `npm.cmd audit --audit-level=moderate`
-
-Docker Compose checks pass:
-
-- `docker compose config`
-- `docker compose up --build -d`
-- `docker compose ps`
-- `docker compose exec -T postgres pg_isready -U taskforge -d taskforge`
-- `docker compose exec -T redis redis-cli ping`
-- `docker compose exec -T kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list`
-- HTTP health checks for control plane, scheduler, and worker all returned status `UP`.
-- Frontend returned HTTP 200 on `http://localhost:5173/`.
-- Phase 1 live smoke passed on 2026-08-14:
-  - Created task `ff65492f-171f-4802-b22f-0dcad75b3e8e`.
-  - Observed `PENDING -> DISPATCHED -> SUCCEEDED`.
-  - Durable row recorded `attempt_count = 1`, `dispatched_at`, and `completed_at`.
-
-## Adversarial Review Notes
-
-- Defect fixed: terminal tasks can no longer be moved back to `PENDING` by a late scheduler rollback path.
-- Added explicit API handling for malformed JSON, missing tenant headers, invalid UUID path values, and `ResponseStatusException`.
-- Added PostgreSQL/Testcontainers concurrency verification proving two simultaneous scheduler claims do not claim the same task.
-- Current documented limitation remains: Phase 1 does not have a transactional outbox. If the scheduler commits `DISPATCHED` and the process dies before Kafka publish, the task can remain stuck until Phase 3 introduces outbox/reconciliation.
-
-GitHub repository exists at `https://github.com/mihirgamre/taskforge`. Phase 1 changes are not committed yet.
+M2 - Reliable Distributed Execution. M2 is ready to begin after the M1 commit, but no M2 functionality has been started.
