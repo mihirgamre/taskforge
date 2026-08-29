@@ -16,6 +16,8 @@ Adds workflow definitions, drafts, versions, nodes, edges, DAG validation, cycle
 
 ## M2 - Reliable Distributed Execution
 
+Status: COMPLETE.
+
 Combines original Phases 3-5: transactional outbox, reliable Kafka publication, idempotent consumers/inbox, worker leases, heartbeats, expired lease recovery, retries, exponential backoff, dead-letter handling, and distributed concurrency testing.
 
 ## M3 - Identity, Tenancy And API Protection

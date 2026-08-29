@@ -50,6 +50,27 @@ public class TaskExecution {
     @Column(name = "completed_at")
     private Instant completedAt;
 
+    @Column(name = "lease_owner")
+    private String leaseOwner;
+
+    @Column(name = "lease_token")
+    private UUID leaseToken;
+
+    @Column(name = "lease_expires_at")
+    private Instant leaseExpiresAt;
+
+    @Column(name = "lease_heartbeat_at")
+    private Instant leaseHeartbeatAt;
+
+    @Column(name = "next_attempt_at", nullable = false)
+    private Instant nextAttemptAt;
+
+    @Column(name = "max_attempts", nullable = false)
+    private int maxAttempts;
+
+    @Column(name = "failure_message")
+    private String failureMessage;
+
     protected TaskExecution() {
     }
 
@@ -61,6 +82,8 @@ public class TaskExecution {
         this.description = description;
         this.createdAt = now;
         this.updatedAt = now;
+        this.nextAttemptAt = now;
+        this.maxAttempts = 3;
     }
 
     private TaskExecution(
@@ -81,6 +104,8 @@ public class TaskExecution {
         this.workflowNodeKey = workflowNodeKey;
         this.createdAt = now;
         this.updatedAt = now;
+        this.nextAttemptAt = now;
+        this.maxAttempts = 3;
     }
 
     public static TaskExecution createNoOp(String tenantId, String description, Instant now) {
@@ -156,6 +181,34 @@ public class TaskExecution {
         return completedAt;
     }
 
+    public String leaseOwner() {
+        return leaseOwner;
+    }
+
+    public UUID leaseToken() {
+        return leaseToken;
+    }
+
+    public Instant leaseExpiresAt() {
+        return leaseExpiresAt;
+    }
+
+    public Instant leaseHeartbeatAt() {
+        return leaseHeartbeatAt;
+    }
+
+    public Instant nextAttemptAt() {
+        return nextAttemptAt;
+    }
+
+    public int maxAttempts() {
+        return maxAttempts;
+    }
+
+    public String failureMessage() {
+        return failureMessage;
+    }
+
     public void markDispatched(Instant now) {
         requireStatus(TaskStatus.PENDING, "dispatch");
         this.status = TaskStatus.DISPATCHED;
@@ -167,12 +220,14 @@ public class TaskExecution {
     public void markPending(Instant now) {
         requireStatus(TaskStatus.DISPATCHED, "return to pending");
         this.status = TaskStatus.PENDING;
+        clearLease();
         this.updatedAt = now;
     }
 
     public void markReady(Instant now) {
         requireStatus(TaskStatus.BLOCKED, "make ready");
         this.status = TaskStatus.PENDING;
+        this.nextAttemptAt = now;
         this.updatedAt = now;
     }
 
@@ -180,13 +235,65 @@ public class TaskExecution {
         requireStatus(TaskStatus.DISPATCHED, "succeed");
         this.status = TaskStatus.SUCCEEDED;
         this.completedAt = now;
+        clearLease();
         this.updatedAt = now;
     }
 
-    public void markFailed(Instant now) {
+    public void markFailed(String message, Instant now) {
         requireStatus(TaskStatus.DISPATCHED, "fail");
         this.status = TaskStatus.FAILED;
+        this.failureMessage = message;
         this.completedAt = now;
+        clearLease();
+        this.updatedAt = now;
+    }
+
+    public boolean acquireLease(String owner, UUID token, Instant now, Instant expiresAt) {
+        requireStatus(TaskStatus.DISPATCHED, "lease");
+        if (leaseToken != null && leaseExpiresAt != null && leaseExpiresAt.isAfter(now)) {
+            return false;
+        }
+        this.leaseOwner = owner;
+        this.leaseToken = token;
+        this.leaseExpiresAt = expiresAt;
+        this.leaseHeartbeatAt = now;
+        this.updatedAt = now;
+        return true;
+    }
+
+    public boolean heartbeat(UUID token, Instant now, Instant expiresAt) {
+        if (!hasLeaseToken(token) || status != TaskStatus.DISPATCHED) {
+            return false;
+        }
+        this.leaseHeartbeatAt = now;
+        this.leaseExpiresAt = expiresAt;
+        this.updatedAt = now;
+        return true;
+    }
+
+    public boolean hasLeaseToken(UUID token) {
+        return leaseToken != null && leaseToken.equals(token);
+    }
+
+    public boolean canRetry() {
+        return attemptCount < maxAttempts;
+    }
+
+    public void markRetryableFailure(String message, Instant now, Instant nextAttemptAt) {
+        requireStatus(TaskStatus.DISPATCHED, "retry task");
+        this.status = TaskStatus.PENDING;
+        this.failureMessage = message;
+        this.nextAttemptAt = nextAttemptAt;
+        clearLease();
+        this.updatedAt = now;
+    }
+
+    public void markDeadLettered(String message, Instant now) {
+        requireStatus(TaskStatus.DISPATCHED, "dead-letter task");
+        this.status = TaskStatus.FAILED;
+        this.failureMessage = message;
+        this.completedAt = now;
+        clearLease();
         this.updatedAt = now;
     }
 
@@ -194,5 +301,12 @@ public class TaskExecution {
         if (this.status != expected) {
             throw new IllegalStateException("Cannot " + action + " task " + id + " from status " + status);
         }
+    }
+
+    private void clearLease() {
+        this.leaseOwner = null;
+        this.leaseToken = null;
+        this.leaseExpiresAt = null;
+        this.leaseHeartbeatAt = null;
     }
 }

@@ -112,3 +112,34 @@ What is a DAG? Why make workflow versions immutable? How are root nodes identifi
 
 My explanation in plain English:
 A workflow is a directed acyclic graph: arrows describe which tasks must finish before others can start. TaskForge validates that graph before publishing, stores the published version permanently, and then creates runnable task rows only when dependencies are satisfied.
+
+---
+
+# M2 - Reliable Distributed Execution
+
+Feature:
+Transactional dispatch reliability, idempotent worker consumption, worker leases, retry scheduling, and dead-letter task records.
+
+Problem:
+M0/M1 could leave a task stuck if the scheduler committed `DISPATCHED` and crashed before Kafka publish. Duplicate Kafka delivery also needed durable consumer tracking.
+
+Our solution:
+The scheduler now writes a task-dispatch outbox event in the same PostgreSQL transaction that marks a task `DISPATCHED`. A separate outbox publisher retries Kafka publication until it is acknowledged. Workers consume JSON dispatch envelopes with stable event IDs, record inbox rows per consumer, acquire PostgreSQL task leases, and only complete tasks with the matching lease token.
+
+Execution flow:
+`PENDING` task -> scheduler lock -> `DISPATCHED` plus `outbox_event` -> outbox publisher sends Kafka message -> worker records `inbox_event` -> worker lease acquired -> task succeeds or is retried/dead-lettered.
+
+Trade-offs:
+The outbox publisher currently performs Kafka send while holding the selected outbox row lock. This is simple and correct for the milestone, but can be optimized later if publisher throughput becomes a bottleneck.
+
+Failure modes:
+If Kafka publish fails, the outbox row remains `PENDING` with backoff. If a worker crashes after leasing a task, scheduler lease recovery returns it to `PENDING` while attempts remain. Exhausted attempts are marked `FAILED` and recorded in `dead_letter_task`.
+
+How we tested it:
+Focused unit tests cover outbox event creation, outbox publish success/failure, idempotent inbox behavior, lease acquisition, lease heartbeats, lease-token completion, retry backoff, and dead-letter recording. Full backend verification passed with Testcontainers, and Docker Compose smoke tests exercised linear, fan-out, and fan-in workflows through outbox, Kafka, inbox, leases, and completion.
+
+Measured results:
+No performance measurements exist yet.
+
+Likely interview questions:
+What failure window does the outbox close? Why still claim at-least-once instead of exactly-once? How does the inbox prevent duplicate business effects? Why are leases stored in PostgreSQL? What happens when a worker lease expires?

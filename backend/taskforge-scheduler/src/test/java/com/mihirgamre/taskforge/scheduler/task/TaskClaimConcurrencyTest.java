@@ -1,5 +1,7 @@
 package com.mihirgamre.taskforge.scheduler.task;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mihirgamre.taskforge.domain.outbox.OutboxEventRepository;
 import com.mihirgamre.taskforge.domain.task.TaskExecution;
 import com.mihirgamre.taskforge.domain.task.TaskExecutionRepository;
 import com.mihirgamre.taskforge.domain.task.TaskStatus;
@@ -49,6 +51,9 @@ class TaskClaimConcurrencyTest {
     private TaskExecutionRepository repository;
 
     @Autowired
+    private OutboxEventRepository outboxRepository;
+
+    @Autowired
     private TaskClaimService claimService;
 
     @DynamicPropertySource
@@ -86,6 +91,7 @@ class TaskClaimConcurrencyTest {
             TaskExecution persisted = repository.findById(task.id()).orElseThrow();
             assertThat(persisted.status()).isEqualTo(TaskStatus.DISPATCHED);
             assertThat(persisted.attemptCount()).isEqualTo(1);
+            assertThat(outboxRepository.findAll()).hasSize(1);
         } finally {
             executor.shutdownNow();
         }
@@ -100,6 +106,11 @@ class TaskClaimConcurrencyTest {
         @Bean
         Clock clock() {
             return Clock.fixed(Instant.parse("2026-08-14T10:01:00Z"), ZoneOffset.UTC);
+        }
+
+        @Bean
+        ObjectMapper objectMapper() {
+            return new ObjectMapper();
         }
     }
 }
