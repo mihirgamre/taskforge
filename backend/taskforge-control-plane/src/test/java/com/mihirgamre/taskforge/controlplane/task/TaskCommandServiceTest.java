@@ -21,25 +21,27 @@ class TaskCommandServiceTest {
     private final TaskExecutionRepository repository = mock(TaskExecutionRepository.class);
     private final Clock clock = Clock.fixed(Instant.parse("2026-08-14T10:00:00Z"), ZoneOffset.UTC);
     private final TaskCommandService service = new TaskCommandService(repository, clock);
+    private final UUID organizationId = UUID.randomUUID();
 
     @Test
-    void createsPendingNoOpTaskForTenant() {
+    void createsPendingNoOpTaskForOrganization() {
         when(repository.save(any(TaskExecution.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        TaskExecution execution = service.createNoOp("tenant-a", "phase one");
+        TaskExecution execution = service.createNoOp(organizationId, "phase one");
 
-        assertThat(execution.tenantId()).isEqualTo("tenant-a");
+        assertThat(execution.organizationId()).isEqualTo(organizationId);
+        assertThat(execution.tenantId()).isEqualTo(organizationId.toString());
         assertThat(execution.description()).isEqualTo("phase one");
         assertThat(execution.status()).isEqualTo(TaskStatus.PENDING);
         assertThat(execution.createdAt()).isEqualTo(Instant.parse("2026-08-14T10:00:00Z"));
     }
 
     @Test
-    void doesNotReturnTaskAcrossTenants() {
+    void doesNotReturnTaskAcrossOrganizations() {
         UUID taskId = UUID.randomUUID();
-        when(repository.findByIdAndTenantId(taskId, "tenant-b")).thenReturn(Optional.empty());
+        when(repository.findByIdAndOrganizationId(taskId, organizationId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.getForTenant(taskId, "tenant-b"))
+        assertThatThrownBy(() -> service.getForOrganization(taskId, organizationId))
                 .hasMessageContaining("Task not found");
     }
 }

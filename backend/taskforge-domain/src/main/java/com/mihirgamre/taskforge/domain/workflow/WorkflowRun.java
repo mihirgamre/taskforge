@@ -21,6 +21,9 @@ public class WorkflowRun {
     @Column(name = "workflow_version_id", nullable = false)
     private UUID workflowVersionId;
 
+    @Column(name = "organization_id")
+    private UUID organizationId;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private WorkflowRunStatus status;
@@ -40,17 +43,22 @@ public class WorkflowRun {
     protected WorkflowRun() {
     }
 
-    private WorkflowRun(UUID workflowId, UUID workflowVersionId, Instant now) {
+    private WorkflowRun(UUID workflowId, UUID workflowVersionId, UUID organizationId, Instant now) {
         this.id = UUID.randomUUID();
         this.workflowId = workflowId;
         this.workflowVersionId = workflowVersionId;
+        this.organizationId = organizationId;
         this.status = WorkflowRunStatus.RUNNING;
         this.createdAt = now;
         this.startedAt = now;
     }
 
     public static WorkflowRun start(UUID workflowId, UUID workflowVersionId, Instant now) {
-        return new WorkflowRun(workflowId, workflowVersionId, now);
+        return new WorkflowRun(workflowId, workflowVersionId, null, now);
+    }
+
+    public static WorkflowRun start(UUID workflowId, UUID workflowVersionId, UUID organizationId, Instant now) {
+        return new WorkflowRun(workflowId, workflowVersionId, organizationId, now);
     }
 
     public UUID id() {
@@ -63,6 +71,10 @@ public class WorkflowRun {
 
     public UUID workflowVersionId() {
         return workflowVersionId;
+    }
+
+    public UUID organizationId() {
+        return organizationId;
     }
 
     public WorkflowRunStatus status() {

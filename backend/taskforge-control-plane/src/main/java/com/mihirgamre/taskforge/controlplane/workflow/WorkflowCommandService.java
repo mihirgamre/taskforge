@@ -59,16 +59,16 @@ public class WorkflowCommandService {
     }
 
     @Transactional
-    public WorkflowResponse create(CreateWorkflowRequest request) {
+    public WorkflowResponse create(UUID organizationId, CreateWorkflowRequest request) {
         Instant now = Instant.now(clock);
-        Workflow workflow = workflowRepository.save(Workflow.create(request.name(), request.description(), now));
+        Workflow workflow = workflowRepository.save(Workflow.create(organizationId, request.name(), request.description(), now));
         WorkflowVersion draft = versionRepository.save(WorkflowVersion.draft(workflow.id(), 1, now));
         return WorkflowResponse.from(workflow, draft);
     }
 
     @Transactional(readOnly = true)
-    public WorkflowResponse get(UUID workflowId) {
-        Workflow workflow = findWorkflow(workflowId);
+    public WorkflowResponse get(UUID organizationId, UUID workflowId) {
+        Workflow workflow = findWorkflow(organizationId, workflowId);
         WorkflowVersion draft = versionRepository
                 .findFirstByWorkflowIdAndStatusOrderByVersionNumberDesc(workflowId, WorkflowVersionStatus.DRAFT)
                 .orElse(null);
@@ -76,8 +76,8 @@ public class WorkflowCommandService {
     }
 
     @Transactional
-    public WorkflowDraftResponse replaceDraft(UUID workflowId, UpdateDraftWorkflowRequest request) {
-        WorkflowVersion draft = findOrCreateDraft(workflowId);
+    public WorkflowDraftResponse replaceDraft(UUID organizationId, UUID workflowId, UpdateDraftWorkflowRequest request) {
+        WorkflowVersion draft = findOrCreateDraft(organizationId, workflowId);
         draft.requireDraft();
         DagValidationResult requestValidation = dagValidator.validate(new DagDefinition(
                 request.nodes().stream().map(WorkflowNodeRequest::nodeKey).toList(),
@@ -108,22 +108,23 @@ public class WorkflowCommandService {
     }
 
     @Transactional(readOnly = true)
-    public WorkflowValidationResponse validate(UUID workflowId) {
-        WorkflowVersion draft = findDraft(workflowId);
+    public WorkflowValidationResponse validate(UUID organizationId, UUID workflowId) {
+        WorkflowVersion draft = findDraft(organizationId, workflowId);
         DagValidationResult result = validateVersion(draft.id());
         return new WorkflowValidationResponse(result.valid(), result.errors());
     }
 
     @Transactional
-    public WorkflowDraftResponse publish(UUID workflowId) {
-        WorkflowVersion draft = findDraft(workflowId);
+    public WorkflowDraftResponse publish(UUID organizationId, UUID workflowId) {
+        WorkflowVersion draft = findDraft(organizationId, workflowId);
         validateVersion(draft.id()).throwIfInvalid();
         draft.publish(Instant.now(clock));
         return draftResponse(draft);
     }
 
     @Transactional
-    public WorkflowRunResponse startRun(UUID workflowId) {
+    public WorkflowRunResponse startRun(UUID organizationId, UUID workflowId) {
+        findWorkflow(organizationId, workflowId);
         WorkflowVersion version = versionRepository
                 .findFirstByWorkflowIdAndStatusOrderByVersionNumberDesc(workflowId, WorkflowVersionStatus.PUBLISHED)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "Workflow has no published version"));
@@ -133,9 +134,10 @@ public class WorkflowCommandService {
         edges.forEach(edge -> nonRootNodes.add(edge.targetNodeKey()));
 
         Instant now = Instant.now(clock);
-        WorkflowRun run = runRepository.save(WorkflowRun.start(workflowId, version.id(), now));
+        WorkflowRun run = runRepository.save(WorkflowRun.start(workflowId, version.id(), organizationId, now));
         List<TaskExecution> tasks = nodes.stream()
                 .map(node -> TaskExecution.createWorkflowNoOp(
+                        organizationId,
                         run.id(),
                         node.nodeKey(),
                         node.name(),
@@ -148,28 +150,28 @@ public class WorkflowCommandService {
     }
 
     @Transactional(readOnly = true)
-    public WorkflowRunResponse getRun(UUID runId) {
-        return WorkflowRunResponse.from(runRepository.findById(runId)
+    public WorkflowRunResponse getRun(UUID organizationId, UUID runId) {
+        return WorkflowRunResponse.from(runRepository.findByIdAndOrganizationId(runId, organizationId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Workflow run not found")));
     }
 
     @Transactional(readOnly = true)
-    public List<WorkflowTaskResponse> getRunTasks(UUID runId) {
-        if (!runRepository.existsById(runId)) {
+    public List<WorkflowTaskResponse> getRunTasks(UUID organizationId, UUID runId) {
+        if (!runRepository.existsByIdAndOrganizationId(runId, organizationId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Workflow run not found");
         }
-        return taskRepository.findByWorkflowRunId(runId).stream()
+        return taskRepository.findByWorkflowRunIdAndOrganizationId(runId, organizationId).stream()
                 .map(WorkflowTaskResponse::from)
                 .toList();
     }
 
-    private Workflow findWorkflow(UUID workflowId) {
-        return workflowRepository.findById(workflowId)
+    private Workflow findWorkflow(UUID organizationId, UUID workflowId) {
+        return workflowRepository.findByIdAndOrganizationId(workflowId, organizationId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Workflow not found"));
     }
 
-    private WorkflowVersion findDraft(UUID workflowId) {
-        findWorkflow(workflowId);
+    private WorkflowVersion findDraft(UUID organizationId, UUID workflowId) {
+        findWorkflow(organizationId, workflowId);
         return versionRepository.findFirstByWorkflowIdAndStatusOrderByVersionNumberDesc(
                         workflowId,
                         WorkflowVersionStatus.DRAFT
@@ -177,8 +179,8 @@ public class WorkflowCommandService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "Workflow has no editable draft"));
     }
 
-    private WorkflowVersion findOrCreateDraft(UUID workflowId) {
-        findWorkflow(workflowId);
+    private WorkflowVersion findOrCreateDraft(UUID organizationId, UUID workflowId) {
+        findWorkflow(organizationId, workflowId);
         return versionRepository.findFirstByWorkflowIdAndStatusOrderByVersionNumberDesc(
                         workflowId,
                         WorkflowVersionStatus.DRAFT

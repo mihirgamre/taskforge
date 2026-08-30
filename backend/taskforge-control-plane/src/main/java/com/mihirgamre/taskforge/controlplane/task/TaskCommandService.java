@@ -21,13 +21,13 @@ public class TaskCommandService {
     }
 
     @Transactional
-    public TaskExecution createNoOp(String tenantId, String description) {
-        return repository.save(TaskExecution.createNoOp(tenantId, description, Instant.now(clock)));
+    public TaskExecution createNoOp(UUID organizationId, String description) {
+        return repository.save(TaskExecution.createNoOp(organizationId, description, Instant.now(clock)));
     }
 
     @Transactional(readOnly = true)
-    public TaskExecution getForTenant(UUID id, String tenantId) {
-        return repository.findByIdAndTenantId(id, tenantId)
+    public TaskExecution getForOrganization(UUID id, UUID organizationId) {
+        return repository.findByIdAndOrganizationId(id, organizationId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Task not found"));
     }
 }

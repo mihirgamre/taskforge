@@ -22,6 +22,8 @@ Combines original Phases 3-5: transactional outbox, reliable Kafka publication, 
 
 ## M3 - Identity, Tenancy And API Protection
 
+Status: COMPLETE.
+
 Includes authentication, refresh-token rotation, organizations, membership, RBAC, tenant isolation, Redis-backed rate limiting, and API security.
 
 ## M4 - Workflow Product UI

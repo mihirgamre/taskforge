@@ -12,3 +12,10 @@ spring:
 otel:
   sdk:
     disabled: true
+taskforge:
+  auth:
+    jwt-secret: test-only-taskforge-jwt-secret-value
+    access-token-ttl: 15m
+    refresh-token-ttl: 14d
+  rate-limit:
+    enabled: false

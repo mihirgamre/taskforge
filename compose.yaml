@@ -67,6 +67,8 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-taskforge_dev_password}
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       SPRING_DATA_REDIS_HOST: redis
+      TASKFORGE_AUTH_JWT_SECRET: ${TASKFORGE_AUTH_JWT_SECRET:-dev-only-taskforge-jwt-secret-change-me}
+      TASKFORGE_RATE_LIMIT_ENABLED: ${TASKFORGE_RATE_LIMIT_ENABLED:-true}
       OTEL_SDK_DISABLED: "true"
     ports:
       - "${CONTROL_PLANE_PORT:-8080}:8080"

@@ -1,7 +1,6 @@
-package com.mihirgamre.taskforge.controlplane.task;
+package com.mihirgamre.taskforge.controlplane.workflow;
 
 import com.mihirgamre.taskforge.controlplane.ControlPlaneApplication;
-import com.mihirgamre.taskforge.domain.task.TaskStatus;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -9,9 +8,9 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
-import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -29,7 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
                 "taskforge.rate-limit.enabled=false"
         }
 )
-class TaskControllerSecurityIntegrationTest {
+class WorkflowTenantIsolationIntegrationTest {
 
     @Container
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:18.4");
@@ -45,46 +44,40 @@ class TaskControllerSecurityIntegrationTest {
     }
 
     @Test
-    void rejectsUnauthenticatedTaskCreation() {
+    void doesNotExposeWorkflowAcrossOrganizations() {
         RestClient client = RestClient.create("http://localhost:" + port);
+        String orgAToken = (String) register(client, "workflow-a@example.com", "Org A").get("accessToken");
+        String orgBToken = (String) register(client, "workflow-b@example.com", "Org B").get("accessToken");
 
-        try {
-            client.post()
-                    .uri("/api/tasks/noop")
-                    .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                    .body("{\"description\":\"smoke\"}")
-                    .retrieve()
-                    .toBodilessEntity();
-        } catch (HttpClientErrorException exception) {
-            assertThat(exception.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(401));
-            return;
-        }
-        throw new AssertionError("Expected unauthenticated request to fail");
-    }
-
-    @Test
-    void createsAuthenticatedTaskForRegisteredOrganization() {
-        RestClient client = RestClient.create("http://localhost:" + port);
-        Map<?, ?> auth = client.post()
-                .uri("/api/auth/register")
-                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .body("""
-                        {"email":"owner@example.com","password":"correct horse battery","organizationName":"Example Org"}
-                        """)
+        Map<?, ?> workflow = client.post()
+                .uri("/api/workflows")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + orgAToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("{\"name\":\"isolated\",\"description\":\"tenant scoped\"}")
                 .retrieve()
                 .body(Map.class);
 
-        var response = client
-                .post()
-                .uri("/api/tasks/noop")
-                .header(HttpHeaders.AUTHORIZATION, "Bearer " + auth.get("accessToken"))
-                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .body("{\"description\":\"smoke\"}")
-                .retrieve()
-                .toEntity(TaskResponse.class);
+        try {
+            client.get()
+                    .uri("/api/workflows/{workflowId}", workflow.get("id"))
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + orgBToken)
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (HttpClientErrorException exception) {
+            assertThat(exception.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(404));
+            return;
+        }
+        throw new AssertionError("Expected cross-organization workflow read to fail");
+    }
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(201));
-        assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().status()).isEqualTo(TaskStatus.PENDING);
+    private Map<?, ?> register(RestClient client, String email, String organizationName) {
+        return client.post()
+                .uri("/api/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("""
+                        {"email":"%s","password":"correct horse battery","organizationName":"%s"}
+                        """.formatted(email, organizationName))
+                .retrieve()
+                .body(Map.class);
     }
 }

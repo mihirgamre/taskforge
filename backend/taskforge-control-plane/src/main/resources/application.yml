@@ -18,4 +18,12 @@ management:
         enabled: true
 server:
   shutdown: graceful
-
+taskforge:
+  auth:
+    jwt-secret: ${TASKFORGE_AUTH_JWT_SECRET:dev-only-taskforge-jwt-secret-change-me}
+    access-token-ttl: ${TASKFORGE_AUTH_ACCESS_TOKEN_TTL:15m}
+    refresh-token-ttl: ${TASKFORGE_AUTH_REFRESH_TOKEN_TTL:14d}
+  rate-limit:
+    enabled: ${TASKFORGE_RATE_LIMIT_ENABLED:true}
+    requests: ${TASKFORGE_RATE_LIMIT_REQUESTS:120}
+    window: ${TASKFORGE_RATE_LIMIT_WINDOW:1m}

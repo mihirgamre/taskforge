@@ -18,6 +18,9 @@ public class TaskExecution {
     @Column(name = "tenant_id", nullable = false)
     private String tenantId;
 
+    @Column(name = "organization_id")
+    private UUID organizationId;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "task_type", nullable = false)
     private TaskType taskType;
@@ -74,9 +77,10 @@ public class TaskExecution {
     protected TaskExecution() {
     }
 
-    private TaskExecution(UUID id, String tenantId, String description, Instant now) {
+    private TaskExecution(UUID id, String tenantId, UUID organizationId, String description, Instant now) {
         this.id = id;
         this.tenantId = tenantId;
+        this.organizationId = organizationId;
         this.taskType = TaskType.NO_OP;
         this.status = TaskStatus.PENDING;
         this.description = description;
@@ -89,6 +93,7 @@ public class TaskExecution {
     private TaskExecution(
             UUID id,
             String tenantId,
+            UUID organizationId,
             String description,
             UUID workflowRunId,
             String workflowNodeKey,
@@ -97,6 +102,7 @@ public class TaskExecution {
     ) {
         this.id = id;
         this.tenantId = tenantId;
+        this.organizationId = organizationId;
         this.taskType = TaskType.NO_OP;
         this.status = status;
         this.description = description;
@@ -109,10 +115,15 @@ public class TaskExecution {
     }
 
     public static TaskExecution createNoOp(String tenantId, String description, Instant now) {
-        return new TaskExecution(UUID.randomUUID(), tenantId, description, now);
+        return new TaskExecution(UUID.randomUUID(), tenantId, null, description, now);
+    }
+
+    public static TaskExecution createNoOp(UUID organizationId, String description, Instant now) {
+        return new TaskExecution(UUID.randomUUID(), organizationId.toString(), organizationId, description, now);
     }
 
     public static TaskExecution createWorkflowNoOp(
+            UUID organizationId,
             UUID workflowRunId,
             String workflowNodeKey,
             String description,
@@ -124,7 +135,8 @@ public class TaskExecution {
         }
         return new TaskExecution(
                 UUID.randomUUID(),
-                "workflow",
+                organizationId == null ? "workflow" : organizationId.toString(),
+                organizationId,
                 description,
                 workflowRunId,
                 workflowNodeKey,
@@ -133,12 +145,26 @@ public class TaskExecution {
         );
     }
 
+    public static TaskExecution createWorkflowNoOp(
+            UUID workflowRunId,
+            String workflowNodeKey,
+            String description,
+            TaskStatus status,
+            Instant now
+    ) {
+        return createWorkflowNoOp(null, workflowRunId, workflowNodeKey, description, status, now);
+    }
+
     public UUID id() {
         return id;
     }
 
     public String tenantId() {
         return tenantId;
+    }
+
+    public UUID organizationId() {
+        return organizationId;
     }
 
     public TaskType taskType() {

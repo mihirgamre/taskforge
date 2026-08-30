@@ -14,6 +14,8 @@ import org.springframework.data.repository.query.Param;
 public interface TaskExecutionRepository extends JpaRepository<TaskExecution, UUID> {
     Optional<TaskExecution> findByIdAndTenantId(UUID id, String tenantId);
 
+    Optional<TaskExecution> findByIdAndOrganizationId(UUID id, UUID organizationId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             select task from TaskExecution task
@@ -38,6 +40,8 @@ public interface TaskExecutionRepository extends JpaRepository<TaskExecution, UU
     );
 
     List<TaskExecution> findByWorkflowRunId(UUID workflowRunId);
+
+    List<TaskExecution> findByWorkflowRunIdAndOrganizationId(UUID workflowRunId, UUID organizationId);
 
     Optional<TaskExecution> findByWorkflowRunIdAndWorkflowNodeKey(UUID workflowRunId, String workflowNodeKey);
 

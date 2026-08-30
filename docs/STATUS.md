@@ -4,13 +4,14 @@ Last updated: 2026-08-29
 
 ## Latest Completed Milestone
 
-M2 - Reliable Distributed Execution.
+M3 - Identity, Tenancy, and API Protection.
 
 ## Completed
 
 - M0 foundation and one-task vertical slice are complete and pushed to `main`.
 - M1 workflow DAG engine is complete and pushed to `main`.
-- M2 reliable distributed execution is implemented and locally verified.
+- M2 reliable distributed execution is complete and pushed to `main`.
+- M3 identity, organization tenancy, RBAC foundations, refresh-token rotation, and API protection are implemented.
 - Existing Phase 1 path remains: `POST /api/tasks/noop` -> PostgreSQL `PENDING` task -> scheduler claim -> Kafka dispatch -> worker completion -> PostgreSQL `SUCCEEDED`.
 
 ## Implemented
@@ -29,21 +30,23 @@ M2 - Reliable Distributed Execution.
 - Worker consumption records durable inbox rows keyed by event and consumer.
 - Workers acquire PostgreSQL task leases and complete tasks only with the matching lease token.
 - Retry backoff, expired-lease recovery, and durable dead-letter task records are in place.
+- Registration and login create BCrypt-hashed users, organizations, and owner memberships.
+- JWT access tokens carry authenticated user, organization, and role context.
+- Refresh tokens are stored hashed, rotate on refresh, and reject reused revoked tokens.
+- Control-plane task and workflow APIs use authenticated organization context instead of caller-supplied tenant headers.
+- Cross-organization workflow access returns not found.
+- Redis-backed rate limiting protects `/api/**` requests with fail-open behavior if Redis is unavailable.
 
 ## Known Limitations
 
-- Authentication, organizations, RBAC, Redis rate limiting, visual workflow builder, additional task handlers, schedules, observability, and cloud deployment remain later milestones.
+- Visual workflow builder, additional task handlers, schedules, observability, and cloud deployment remain later milestones.
+- M3 supports one active organization per token. Invitations, organization switching, account recovery, account lockout, audit logs, and API keys remain later work.
 - M2 keeps retry/dead-letter policy intentionally simple; richer operator controls and observability remain later milestones.
 
 ## Verification Notes
 
-- `cd backend && .\mvnw.cmd verify`: passed, 49 backend tests.
-- `docker compose config --quiet`: passed.
-- `docker --context default compose up --build -d`: passed.
-- Health checks for control-plane, scheduler, and worker returned `UP`.
-- Live DAG smoke tests passed for linear `A -> B -> C`, fan-out `A -> {B, C}`, and fan-in `{A, B} -> C` through the outbox/Kafka/inbox/lease path.
-- PostgreSQL verification confirmed 9 smoke-test tasks reached `SUCCEEDED` with one attempt, leases cleared, 9 outbox rows `PUBLISHED`, 9 inbox rows recorded, and 0 dead-letter rows.
+- M3 focused control-plane tests passed before full verification. See latest task output for full command results.
 
 ## Next Milestone
 
-M3 - Identity, Tenancy, and API Protection.
+M4 - Workflow Product UI.

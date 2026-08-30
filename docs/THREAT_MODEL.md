@@ -27,15 +27,17 @@
 - No arbitrary code, shell, or user container execution exists.
 - No secret material is present in repository defaults.
 - Phase 1 task reads are scoped by task id plus `X-Tenant-Id`.
-- Phase 1 does not execute arbitrary user code or external HTTP calls.
+- Authenticated organization context scopes new workflow and task resources.
+- Refresh-token hashes and rotation reduce impact of refresh-token database exposure and reuse.
+- Basic RBAC prevents viewer roles from write operations.
+- Redis-backed rate limiting limits request bursts while preserving availability if Redis is down.
+- TaskForge does not execute arbitrary user code or external HTTP calls.
 
 ## Planned Mitigations
 
-- Tenant authorization at service boundaries and repository queries.
-- Authentication-backed tenant identity; the current `X-Tenant-Id` header is only a development placeholder.
-- Transactional outbox, processed-event records, and idempotent consumers.
-- Durable worker leases in PostgreSQL.
+- Organization invitations, switching, and stricter per-feature permissions.
+- Audit logging for security-sensitive events.
 - Request validation, payload limits, and explicit error models.
 - Secret encryption, masking, and redaction tests.
 - Restricted HTTP destination validation for future HTTP tasks.
-- Security headers, CORS/CSRF controls, and rate limits.
+- CORS policy hardening for deployed frontend origins.

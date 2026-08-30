@@ -18,6 +18,9 @@ public class Workflow {
     @Column(nullable = false)
     private String name;
 
+    @Column(name = "organization_id")
+    private UUID organizationId;
+
     @Column
     private String description;
 
@@ -34,8 +37,9 @@ public class Workflow {
     protected Workflow() {
     }
 
-    private Workflow(UUID id, String name, String description, Instant now) {
+    private Workflow(UUID id, UUID organizationId, String name, String description, Instant now) {
         this.id = id;
+        this.organizationId = organizationId;
         this.name = name;
         this.description = description;
         this.status = WorkflowStatus.ACTIVE;
@@ -44,7 +48,11 @@ public class Workflow {
     }
 
     public static Workflow create(String name, String description, Instant now) {
-        return new Workflow(UUID.randomUUID(), name, description, now);
+        return new Workflow(UUID.randomUUID(), null, name, description, now);
+    }
+
+    public static Workflow create(UUID organizationId, String name, String description, Instant now) {
+        return new Workflow(UUID.randomUUID(), organizationId, name, description, now);
     }
 
     public UUID id() {
@@ -53,6 +61,10 @@ public class Workflow {
 
     public String name() {
         return name;
+    }
+
+    public UUID organizationId() {
+        return organizationId;
     }
 
     public String description() {

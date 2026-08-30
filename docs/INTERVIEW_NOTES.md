@@ -143,3 +143,40 @@ No performance measurements exist yet.
 
 Likely interview questions:
 What failure window does the outbox close? Why still claim at-least-once instead of exactly-once? How does the inbox prevent duplicate business effects? Why are leases stored in PostgreSQL? What happens when a worker lease expires?
+
+---
+
+# M3 - Identity, Tenancy, and API Protection
+
+Feature:
+Authenticated organization-scoped API access.
+
+Problem:
+The earlier tenant header was a development placeholder. A workflow platform needs identity, durable organization ownership, role checks, and session security before product UI or public API expansion.
+
+Our solution:
+Registration creates a user, organization, and owner membership. Passwords are BCrypt-hashed. Login issues a short-lived JWT access token and a durable refresh token stored only as a hash. Refresh tokens rotate on use, and reuse of an old token revokes the token family.
+
+Execution flow:
+Clients register or log in, then call protected `/api/**` endpoints with `Authorization: Bearer ...`. The JWT filter validates the signature and builds an authenticated principal containing user id, organization id, and role. Task and workflow services use that organization id in repository queries.
+
+Why we chose this design:
+JWT access tokens keep API requests stateless, while refresh-token rows provide durable rotation and reuse detection. Organization ownership is stored in PostgreSQL with the rest of the durable application state.
+
+Trade-offs:
+M3 intentionally supports one active organization per token and a simple read/write role split. Invitations, organization switching, account lockout, MFA, audit logging, and API keys remain later work.
+
+Failure modes:
+If Redis is unavailable, rate limiting fails open and logs a warning. If an access token is stolen, it remains usable until expiry; immediate access-token revocation is not implemented yet.
+
+How we tested it:
+PostgreSQL-backed integration tests cover registration, login, refresh rotation, refresh-token reuse rejection, authenticated task creation, current-user context, and cross-organization workflow isolation. A unit test covers Redis rate-limit rejection.
+
+Measured results:
+No performance measurements exist yet.
+
+Likely interview questions:
+Why not trust a tenant header? Why hash refresh tokens? What happens on refresh-token reuse? Why return 404 for cross-tenant reads? What remains before production-grade auth?
+
+My explanation in plain English:
+M3 makes tenancy come from authentication instead of client-provided headers. Every protected request carries a signed token, the backend derives the organization from that token, and database queries include that organization so one customer cannot read another customer’s workflows.
