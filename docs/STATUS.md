@@ -1,10 +1,10 @@
 # Status
 
-Last updated: 2026-08-29
+Last updated: 2026-08-30
 
 ## Latest Completed Milestone
 
-M3 - Identity, Tenancy, and API Protection.
+M4 - Workflow Product UI.
 
 ## Completed
 
@@ -12,6 +12,7 @@ M3 - Identity, Tenancy, and API Protection.
 - M1 workflow DAG engine is complete and pushed to `main`.
 - M2 reliable distributed execution is complete and pushed to `main`.
 - M3 identity, organization tenancy, RBAC foundations, refresh-token rotation, and API protection are implemented.
+- M4 workflow product UI is implemented for authenticated workflow management, draft editing, DAG visualization, validation, publishing, run creation, and run tracking.
 - Existing Phase 1 path remains: `POST /api/tasks/noop` -> PostgreSQL `PENDING` task -> scheduler claim -> Kafka dispatch -> worker completion -> PostgreSQL `SUCCEEDED`.
 
 ## Implemented
@@ -36,17 +37,22 @@ M3 - Identity, Tenancy, and API Protection.
 - Control-plane task and workflow APIs use authenticated organization context instead of caller-supplied tenant headers.
 - Cross-organization workflow access returns not found.
 - Redis-backed rate limiting protects `/api/**` requests with fail-open behavior if Redis is unavailable.
+- The frontend stores login sessions locally, restores sessions with refresh-token rotation, and calls authenticated workflow APIs.
+- The workflow console can list organization-scoped workflows, create workflows, edit draft `NO_OP` nodes and edges, save/validate/publish drafts, start runs, and poll run/task status.
+- Run detail shows a graph-oriented execution view plus task/run status summaries.
 
 ## Known Limitations
 
-- Visual workflow builder, additional task handlers, schedules, observability, and cloud deployment remain later milestones.
+- Additional task handlers, schedules, observability, and cloud deployment remain later milestones.
 - M3 supports one active organization per token. Invitations, organization switching, account recovery, account lockout, audit logs, and API keys remain later work.
 - M2 keeps retry/dead-letter policy intentionally simple; richer operator controls and observability remain later milestones.
+- M4 uses polling for live run updates because the backend SSE stream remains a later enhancement.
+- Approval UX is a placeholder surface only; actual manual approval task execution belongs to M5.
 
 ## Verification Notes
 
-- M3 focused control-plane tests passed before full verification. See latest task output for full command results.
+- M4 focused backend/frontend tests passed during implementation. See latest task output for full command results.
 
 ## Next Milestone
 
-M4 - Workflow Product UI.
+M5 - Automation Capabilities.

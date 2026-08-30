@@ -1,7 +1,9 @@
 package com.mihirgamre.taskforge.controlplane.workflow;
 
 import com.mihirgamre.taskforge.controlplane.ControlPlaneApplication;
+import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
@@ -46,8 +48,9 @@ class WorkflowTenantIsolationIntegrationTest {
     @Test
     void doesNotExposeWorkflowAcrossOrganizations() {
         RestClient client = RestClient.create("http://localhost:" + port);
-        String orgAToken = (String) register(client, "workflow-a@example.com", "Org A").get("accessToken");
-        String orgBToken = (String) register(client, "workflow-b@example.com", "Org B").get("accessToken");
+        String suffix = UUID.randomUUID().toString();
+        String orgAToken = (String) register(client, "workflow-a-%s@example.com".formatted(suffix), "Org A").get("accessToken");
+        String orgBToken = (String) register(client, "workflow-b-%s@example.com".formatted(suffix), "Org B").get("accessToken");
 
         Map<?, ?> workflow = client.post()
                 .uri("/api/workflows")
@@ -68,6 +71,47 @@ class WorkflowTenantIsolationIntegrationTest {
             return;
         }
         throw new AssertionError("Expected cross-organization workflow read to fail");
+    }
+
+    @Test
+    void listsAndReadsDraftsOnlyForAuthenticatedOrganization() {
+        RestClient client = RestClient.create("http://localhost:" + port);
+        String suffix = UUID.randomUUID().toString();
+        String orgAToken = (String) register(client, "list-a-%s@example.com".formatted(suffix), "List Org A").get("accessToken");
+        String orgBToken = (String) register(client, "list-b-%s@example.com".formatted(suffix), "List Org B").get("accessToken");
+
+        Map<String, Object> first = createWorkflow(client, orgAToken, "first");
+        createWorkflow(client, orgAToken, "second");
+        createWorkflow(client, orgBToken, "hidden");
+
+        List<?> workflows = client.get()
+                .uri("/api/workflows")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + orgAToken)
+                .retrieve()
+                .body(List.class);
+        Map<String, Object> draft = client.get()
+                .uri("/api/workflows/{workflowId}/draft", first.get("id"))
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + orgAToken)
+                .retrieve()
+                .body(new org.springframework.core.ParameterizedTypeReference<>() {
+                });
+
+        assertThat(workflows).hasSize(2);
+        assertThat(draft).containsEntry("workflowId", first.get("id"));
+        assertThat(draft).containsEntry("status", "DRAFT");
+    }
+
+    private Map<String, Object> createWorkflow(RestClient client, String token, String name) {
+        return client.post()
+                .uri("/api/workflows")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("""
+                        {"name":"%s","description":"tenant scoped"}
+                        """.formatted(name))
+                .retrieve()
+                .body(new org.springframework.core.ParameterizedTypeReference<>() {
+                });
     }
 
     private Map<?, ?> register(RestClient client, String email, String organizationName) {

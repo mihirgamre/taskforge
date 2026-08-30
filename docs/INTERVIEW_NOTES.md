@@ -180,3 +180,40 @@ Why not trust a tenant header? Why hash refresh tokens? What happens on refresh-
 
 My explanation in plain English:
 M3 makes tenancy come from authentication instead of client-provided headers. Every protected request carries a signed token, the backend derives the organization from that token, and database queries include that organization so one customer cannot read another customer’s workflows.
+
+---
+
+# M4 - Workflow Product UI
+
+Feature:
+Authenticated workflow management console.
+
+Problem:
+The backend could execute versioned DAGs, but there was no practical product surface for creating, validating, publishing, running, or inspecting workflows.
+
+Our solution:
+The React app now provides registration/sign-in, session restore, organization-scoped workflow listing, workflow creation, a draft node/edge editor, graph visualization, validation/publish/run actions, run detail, and task status summaries.
+
+Execution flow:
+The browser stores access and refresh tokens locally, refreshes a session on load, lists workflows for the authenticated organization, edits a draft graph, saves it through the control plane, validates/publishes it, starts a run, and polls run/task APIs until the run reaches a terminal state.
+
+Why we chose this design:
+M4 stays product-focused without inventing new backend orchestration behavior. Polling is sufficient for the current run detail UI while the documented SSE approach remains available for a later backend live-update endpoint.
+
+Trade-offs:
+The visual builder is intentionally simple and form-driven. It supports the M1/M3 backend capabilities but does not add drag-and-drop graph editing, extra handlers, historical run browsing, real approval tasks, or SSE streaming.
+
+Failure modes:
+Expired access tokens require refresh on app load; automatic per-request refresh is not implemented yet. If the backend rejects a draft or run action, the UI surfaces the API error without mutating server state.
+
+How we tested it:
+Frontend unit tests cover the unauthenticated console and authenticated workflow data rendering with mocked API responses. Playwright smoke testing covers the app shell. Backend integration testing covers the new organization-scoped workflow list and draft read endpoints.
+
+Measured results:
+No performance measurements exist yet.
+
+Likely interview questions:
+Why not build the full drag-and-drop workflow builder immediately? Why use polling instead of SSE for M4? How does the frontend preserve tenant boundaries? What backend behavior did M4 require?
+
+My explanation in plain English:
+M4 turns the workflow engine into something usable. A user can sign in, manage a workflow draft, see the DAG, publish it, run it, and watch execution status, while the backend still owns validation, tenancy, and durable execution state.

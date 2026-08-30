@@ -34,9 +34,19 @@ class WorkflowController {
         return ResponseEntity.created(URI.create("/api/workflows/" + response.id())).body(response);
     }
 
+    @GetMapping("/workflows")
+    List<WorkflowResponse> list(@AuthenticationPrincipal AuthenticatedUser user) {
+        return service.list(user.organizationId());
+    }
+
     @GetMapping("/workflows/{workflowId}")
     WorkflowResponse get(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable UUID workflowId) {
         return service.get(user.organizationId(), workflowId);
+    }
+
+    @GetMapping("/workflows/{workflowId}/draft")
+    WorkflowDraftResponse getDraft(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable UUID workflowId) {
+        return service.getDraft(user.organizationId(), workflowId);
     }
 
     @PatchMapping("/workflows/{workflowId}/draft")

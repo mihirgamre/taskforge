@@ -28,6 +28,8 @@ Includes authentication, refresh-token rotation, organizations, membership, RBAC
 
 ## M4 - Workflow Product UI
 
+Status: COMPLETE.
+
 Includes visual workflow builder, workflow management UI, execution graph, run details, live execution updates, approval UX, and responsive/error/loading states.
 
 ## M5 - Automation Capabilities

@@ -67,12 +67,26 @@ public class WorkflowCommandService {
     }
 
     @Transactional(readOnly = true)
+    public List<WorkflowResponse> list(UUID organizationId) {
+        return workflowRepository.findByOrganizationIdOrderByUpdatedAtDesc(organizationId).stream()
+                .map(workflow -> WorkflowResponse.from(workflow, versionRepository
+                        .findFirstByWorkflowIdAndStatusOrderByVersionNumberDesc(workflow.id(), WorkflowVersionStatus.DRAFT)
+                        .orElse(null)))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public WorkflowResponse get(UUID organizationId, UUID workflowId) {
         Workflow workflow = findWorkflow(organizationId, workflowId);
         WorkflowVersion draft = versionRepository
                 .findFirstByWorkflowIdAndStatusOrderByVersionNumberDesc(workflowId, WorkflowVersionStatus.DRAFT)
                 .orElse(null);
         return WorkflowResponse.from(workflow, draft);
+    }
+
+    @Transactional(readOnly = true)
+    public WorkflowDraftResponse getDraft(UUID organizationId, UUID workflowId) {
+        return draftResponse(findDraft(organizationId, workflowId));
     }
 
     @Transactional
