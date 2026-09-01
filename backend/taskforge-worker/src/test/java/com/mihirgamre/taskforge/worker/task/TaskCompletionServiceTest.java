@@ -4,12 +4,11 @@ import com.mihirgamre.taskforge.domain.deadletter.DeadLetterTaskRepository;
 import com.mihirgamre.taskforge.domain.task.TaskExecution;
 import com.mihirgamre.taskforge.domain.task.TaskExecutionRepository;
 import com.mihirgamre.taskforge.domain.task.TaskStatus;
-import com.mihirgamre.taskforge.domain.workflow.WorkflowEdgeRepository;
-import com.mihirgamre.taskforge.domain.workflow.WorkflowRunRepository;
+import com.mihirgamre.taskforge.domain.workflow.WorkflowProgressionService;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
-import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -23,14 +22,12 @@ class TaskCompletionServiceTest {
 
     private final TaskExecutionRepository repository = mock(TaskExecutionRepository.class);
     private final DeadLetterTaskRepository deadLetterRepository = mock(DeadLetterTaskRepository.class);
-    private final WorkflowEdgeRepository edgeRepository = mock(WorkflowEdgeRepository.class);
-    private final WorkflowRunRepository runRepository = mock(WorkflowRunRepository.class);
+    private final WorkflowProgressionService progressionService = mock(WorkflowProgressionService.class);
     private final Clock clock = Clock.fixed(Instant.parse("2026-08-14T10:02:00Z"), ZoneOffset.UTC);
     private final TaskCompletionService completionService = new TaskCompletionService(
             repository,
             deadLetterRepository,
-            edgeRepository,
-            runRepository,
+            progressionService,
             clock
     );
 
@@ -43,6 +40,7 @@ class TaskCompletionServiceTest {
         assertThat(completionService.complete(execution.id())).isTrue();
         assertThat(execution.status()).isEqualTo(TaskStatus.SUCCEEDED);
         assertThat(execution.completedAt()).isEqualTo(Instant.parse("2026-08-14T10:02:00Z"));
+        verify(progressionService).afterTerminalTask(execution, Instant.parse("2026-08-14T10:02:00Z"), null);
     }
 
     @Test
@@ -100,6 +98,7 @@ class TaskCompletionServiceTest {
         assertThat(completionService.complete(execution.id(), token)).isTrue();
         assertThat(execution.status()).isEqualTo(TaskStatus.SUCCEEDED);
         assertThat(execution.leaseToken()).isNull();
+        verify(progressionService).afterTerminalTask(execution, Instant.parse("2026-08-14T10:02:00Z"), null);
     }
 
     @Test
@@ -164,5 +163,6 @@ class TaskCompletionServiceTest {
         assertThat(execution.status()).isEqualTo(TaskStatus.FAILED);
         assertThat(execution.failureMessage()).isEqualTo("final");
         verify(deadLetterRepository).save(org.mockito.ArgumentMatchers.any());
+        verify(progressionService).afterTerminalTask(execution, Instant.parse("2026-08-14T10:02:00Z"), "final");
     }
 }

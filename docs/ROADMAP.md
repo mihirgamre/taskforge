@@ -34,7 +34,9 @@ Includes visual workflow builder, workflow management UI, execution graph, run d
 
 ## M5 - Automation Capabilities
 
-Includes task handlers, schedules, cron/timezone handling, API keys, workflow API triggers, manual approvals, safe HTTP tasks, transforms, and notification/report tasks.
+Status: COMPLETE.
+
+Includes task handlers, schedules, cron/timezone handling, API keys, workflow API triggers, manual approvals, safe HTTP task foundations, transforms, and notification/report task foundations.
 
 ## M6 - Production Reliability
 

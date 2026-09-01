@@ -150,11 +150,13 @@ public class WorkflowCommandService {
         Instant now = Instant.now(clock);
         WorkflowRun run = runRepository.save(WorkflowRun.start(workflowId, version.id(), organizationId, now));
         List<TaskExecution> tasks = nodes.stream()
-                .map(node -> TaskExecution.createWorkflowNoOp(
+                .map(node -> TaskExecution.createWorkflowTask(
                         organizationId,
                         run.id(),
                         node.nodeKey(),
                         node.name(),
+                        node.type(),
+                        node.configuration(),
                         nonRootNodes.contains(node.nodeKey()) ? TaskStatus.BLOCKED : TaskStatus.PENDING,
                         now
                 ))

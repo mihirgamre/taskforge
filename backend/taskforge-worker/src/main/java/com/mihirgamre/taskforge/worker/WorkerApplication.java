@@ -9,6 +9,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.kafka.annotation.EnableKafka;
+import org.springframework.web.client.RestClient;
 
 @EnableKafka
 @SpringBootApplication(scanBasePackages = "com.mihirgamre.taskforge")
@@ -24,5 +25,10 @@ public class WorkerApplication {
     @Bean
     ObjectMapper taskforgeObjectMapper() {
         return new ObjectMapper();
+    }
+
+    @Bean
+    RestClient.Builder restClientBuilder() {
+        return RestClient.builder();
     }
 }

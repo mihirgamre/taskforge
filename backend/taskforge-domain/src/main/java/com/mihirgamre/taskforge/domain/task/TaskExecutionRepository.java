@@ -43,6 +43,8 @@ public interface TaskExecutionRepository extends JpaRepository<TaskExecution, UU
 
     List<TaskExecution> findByWorkflowRunIdAndOrganizationId(UUID workflowRunId, UUID organizationId);
 
+    List<TaskExecution> findByOrganizationIdAndStatusOrderByCreatedAtAsc(UUID organizationId, TaskStatus status);
+
     Optional<TaskExecution> findByWorkflowRunIdAndWorkflowNodeKey(UUID workflowRunId, String workflowNodeKey);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

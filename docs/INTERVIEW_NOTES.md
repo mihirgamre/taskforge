@@ -217,3 +217,40 @@ Why not build the full drag-and-drop workflow builder immediately? Why use polli
 
 My explanation in plain English:
 M4 turns the workflow engine into something usable. A user can sign in, manage a workflow draft, see the DAG, publish it, run it, and watch execution status, while the backend still owns validation, tenancy, and durable execution state.
+
+---
+
+# M5 - Automation Capabilities
+
+Feature:
+Workflow automation task types, manual approvals, API-key triggers, and durable schedules.
+
+Problem:
+The workflow engine could run DAGs, but every node behaved like a no-op and runs had to be started manually from an authenticated UI/API call.
+
+Our solution:
+Task executions now preserve node type, configuration, and result data. Workers dispatch `NO_OP`, `TRANSFORM`, `APPROVAL`, `NOTIFICATION`, and basic `HTTP` handlers. API keys are generated once and stored only as hashes. Schedules store cron/timezone metadata and the scheduler turns due schedules into normal workflow runs.
+
+Execution flow:
+A workflow node's published type/configuration is copied into each task execution. The scheduler dispatches pending tasks through the existing outbox/Kafka path. The worker leases the task, executes the handler, and either completes it with a result or moves approval tasks to `WAITING_APPROVAL`. Approving a task marks it succeeded and runs normal dependency progression.
+
+Why we chose this design:
+M5 extends the existing durable pipeline rather than introducing a separate automation runtime. Schedules and API triggers both create ordinary workflow runs, so dependency handling, outbox delivery, leases, retries, and dead-letter behavior remain shared.
+
+Trade-offs:
+Cron support is intentionally limited to five-field minute/hour expressions. HTTP safety blocks obvious local/private literal targets but is not a production SSRF sandbox yet. Notification/report handlers currently persist results rather than integrating with external systems.
+
+Failure modes:
+Invalid task configuration fails through the existing retry/dead-letter path. Rejected approvals fail the workflow run. If a due schedule has no published version because of inconsistent data, scheduler dispatch fails instead of silently launching an undefined graph.
+
+How we tested it:
+Unit tests cover cron calculation, schedule dispatch, API-key creation/authentication/revocation, approval approve/reject transitions, transform execution, approval waiting, and blocked private HTTP targets. Existing Testcontainers workflow execution tests still validate dependency progression.
+
+Measured results:
+No performance measurements exist yet.
+
+Likely interview questions:
+Why store API keys hashed? Why copy node configuration into task executions? How do manual approvals pause a DAG? How do schedules reuse the existing run pipeline? What remains before HTTP tasks are production safe?
+
+My explanation in plain English:
+M5 makes workflows useful automation units. A workflow can include simple handlers, wait for a person to approve a step, start from an API key, or start from a durable schedule, while still using the same database-backed execution pipeline built in earlier milestones.

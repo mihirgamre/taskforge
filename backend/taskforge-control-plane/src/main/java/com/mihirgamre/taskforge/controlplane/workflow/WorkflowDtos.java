@@ -109,8 +109,15 @@ record WorkflowRunResponse(
     }
 }
 
-record WorkflowTaskResponse(UUID id, String nodeKey, TaskStatus status, int attemptCount) {
+record WorkflowTaskResponse(UUID id, String nodeKey, TaskType type, TaskStatus status, int attemptCount, String result) {
     static WorkflowTaskResponse from(TaskExecution task) {
-        return new WorkflowTaskResponse(task.id(), task.workflowNodeKey(), task.status(), task.attemptCount());
+        return new WorkflowTaskResponse(
+                task.id(),
+                task.workflowNodeKey(),
+                task.taskType(),
+                task.status(),
+                task.attemptCount(),
+                task.taskResult()
+        );
     }
 }

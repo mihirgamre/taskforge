@@ -5,18 +5,22 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { clearSession } from '../api/session';
 import {
+  approveTask,
   createWorkflow,
   getWorkflowDraft,
   getWorkflowRun,
   getWorkflowRunTasks,
+  listApprovals,
   listWorkflows,
   login,
   publishWorkflow,
   register,
+  rejectTask,
   restoreSession,
   saveWorkflowDraft,
   startWorkflowRun,
   validateWorkflow,
+  type ApprovalTask,
   type AuthResponse,
   type WorkflowEdge,
   type WorkflowNode,
@@ -38,6 +42,7 @@ const workflowSchema = z.object({
 
 const nodeSchema = z.object({
   nodeKey: z.string().min(1).max(64).regex(/^[A-Za-z0-9_-]+$/),
+  type: z.enum(['NO_OP', 'HTTP', 'TRANSFORM', 'APPROVAL', 'NOTIFICATION']),
   name: z.string().min(1).max(120),
   configuration: z.string(),
 });
@@ -123,7 +128,7 @@ function AuthPanel({ onAuthenticated }: { onAuthenticated: (auth: AuthResponse) 
         </div>
         <div className="grid gap-3 text-sm text-[#52606a] sm:grid-cols-3">
           <Metric label="Boundary" value="Org scoped" />
-          <Metric label="Task type" value="NO_OP" />
+          <Metric label="Task types" value="M5 enabled" />
           <Metric label="Updates" value="Polling" />
         </div>
       </section>
@@ -380,10 +385,7 @@ function WorkflowWorkspace({
         />
       </section>
       <RunPanel runId={activeRunId} edges={activeRunEdges} />
-      <section className="rounded-md border border-[#d6dee3] bg-white p-5">
-        <h2 className="text-lg font-semibold">Approvals</h2>
-        <p className="mt-2 text-sm text-[#52606a]">No approval tasks are waiting.</p>
-      </section>
+      <ApprovalPanel runId={activeRunId} />
     </div>
   );
 }
@@ -401,7 +403,7 @@ function DraftEditor({
 }) {
   const nodeForm = useForm<NodeForm>({
     resolver: zodResolver(nodeSchema),
-    defaultValues: { nodeKey: '', name: '', configuration: '{}' },
+    defaultValues: { nodeKey: '', type: 'NO_OP', name: '', configuration: '{}' },
   });
   const edgeForm = useForm<EdgeForm>({
     resolver: zodResolver(edgeSchema),
@@ -414,14 +416,21 @@ function DraftEditor({
         className="grid gap-3 rounded-md border border-[#d6dee3] p-4"
         onSubmit={(event) => {
           void nodeForm.handleSubmit((value) => {
-            const nextNode = { ...value, type: 'NO_OP' as const };
+            const nextNode = { ...value };
             onNodesChange([...nodes.filter((node) => node.nodeKey !== value.nodeKey), nextNode]);
-            nodeForm.reset({ nodeKey: '', name: '', configuration: '{}' });
+            nodeForm.reset({ nodeKey: '', type: 'NO_OP', name: '', configuration: '{}' });
           })(event);
         }}
       >
         <h3 className="font-semibold">Nodes</h3>
         <input aria-label="Node key" className={inputClass} placeholder="Key" {...nodeForm.register('nodeKey')} />
+        <select aria-label="Node type" className={inputClass} {...nodeForm.register('type')}>
+          <option value="NO_OP">No-op</option>
+          <option value="TRANSFORM">Transform</option>
+          <option value="APPROVAL">Approval</option>
+          <option value="NOTIFICATION">Notification</option>
+          <option value="HTTP">HTTP</option>
+        </select>
         <input aria-label="Node name" className={inputClass} placeholder="Name" {...nodeForm.register('name')} />
         <textarea
           aria-label="Node configuration JSON"
@@ -436,7 +445,7 @@ function DraftEditor({
           {nodes.map((node) => (
             <div className="flex items-center justify-between rounded-md bg-[#f0f4f5] px-3 py-2 text-sm" key={node.nodeKey}>
               <span>
-                <strong>{node.nodeKey}</strong> {node.name}
+                <strong>{node.nodeKey}</strong> {node.name} <span className="text-xs text-[#52606a]">{node.type}</span>
               </span>
               <button
                 className={ghostButton}
@@ -611,14 +620,77 @@ function RunSummary({ run, tasks }: { run?: WorkflowRun; tasks: WorkflowTask[] }
       <h3 className="font-semibold">Tasks</h3>
       <div className="mt-3 grid gap-2">
         {tasks.map((task) => (
-          <div className="flex items-center justify-between rounded-md bg-[#f0f4f5] px-3 py-2 text-sm" key={task.id}>
-            <span>{task.nodeKey}</span>
-            <span className="font-medium">{task.status}</span>
+          <div className="rounded-md bg-[#f0f4f5] px-3 py-2 text-sm" key={task.id}>
+            <div className="flex items-center justify-between">
+              <span>{task.nodeKey} <span className="text-xs text-[#52606a]">{task.type}</span></span>
+              <span className="font-medium">{task.status}</span>
+            </div>
+            {task.result ? <p className="mt-1 break-words text-xs text-[#52606a]">{task.result}</p> : null}
           </div>
         ))}
       </div>
       {run?.failureMessage ? <p className="mt-3 text-sm text-[#a33a2a]">{run.failureMessage}</p> : null}
     </div>
+  );
+}
+
+function ApprovalPanel({ runId }: { runId: string | null }) {
+  const queryClient = useQueryClient();
+  const approvalsQuery = useQuery({
+    queryKey: ['approvals'],
+    queryFn: listApprovals,
+    refetchInterval: 3000,
+  });
+  const approveMutation = useMutation({
+    mutationFn: approveTask,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['approvals'] });
+      if (runId) {
+        void queryClient.invalidateQueries({ queryKey: ['workflow-run', runId] });
+        void queryClient.invalidateQueries({ queryKey: ['workflow-run-tasks', runId] });
+      }
+    },
+  });
+  const rejectMutation = useMutation({
+    mutationFn: (task: ApprovalTask) => rejectTask(task.id, 'Rejected from workflow console'),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['approvals'] });
+      if (runId) {
+        void queryClient.invalidateQueries({ queryKey: ['workflow-run', runId] });
+        void queryClient.invalidateQueries({ queryKey: ['workflow-run-tasks', runId] });
+      }
+    },
+  });
+
+  return (
+    <section className="rounded-md border border-[#d6dee3] bg-white p-5">
+      <h2 className="text-lg font-semibold">Approvals</h2>
+      {approvalsQuery.data?.length ? (
+        <div className="mt-3 grid gap-3">
+          {approvalsQuery.data.map((task) => (
+            <div className="rounded-md border border-[#d6dee3] p-3 text-sm" key={task.id}>
+              <p className="font-medium">{task.nodeKey} - {task.description ?? 'Approval'}</p>
+              <p className="mt-1 break-words text-[#52606a]">{task.prompt ?? 'Approval required'}</p>
+              <div className="mt-3 flex gap-2">
+                <button className={secondaryButton} type="button" onClick={() => approveMutation.mutate(task.id)}>
+                  Approve
+                </button>
+                <button className={ghostButton} type="button" onClick={() => rejectMutation.mutate(task)}>
+                  Reject
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-2 text-sm text-[#52606a]">No approval tasks are waiting.</p>
+      )}
+      {[approvalsQuery.error, approveMutation.error, rejectMutation.error]
+        .filter((error): error is Error => error instanceof Error)
+        .map((error) => (
+          <p className="mt-2 text-sm text-[#a33a2a]" key={error.message}>{error.message}</p>
+        ))}
+    </section>
   );
 }
 
@@ -657,7 +729,7 @@ function Metric({ label, value }: { label: string; value: string }) {
 function tasksToNodes(tasks: WorkflowTask[] | undefined): WorkflowNode[] {
   return (tasks ?? []).map((task) => ({
     nodeKey: task.nodeKey,
-    type: 'NO_OP',
+    type: task.type,
     name: task.status,
     configuration: '{}',
   }));
@@ -677,6 +749,8 @@ function statusFill(status?: string) {
     case 'RUNNING':
     case 'DISPATCHED':
       return '#dcecff';
+    case 'WAITING_APPROVAL':
+      return '#fff1cc';
     case 'BLOCKED':
       return '#edf0f2';
     default:

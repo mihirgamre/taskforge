@@ -10,4 +10,9 @@ class WorkerApplicationTest {
     void applicationClassExists() {
         assertThat(WorkerApplication.class).isNotNull();
     }
+
+    @Test
+    void providesRestClientBuilderForHttpTasks() {
+        assertThat(new WorkerApplication().restClientBuilder()).isNotNull();
+    }
 }

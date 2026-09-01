@@ -45,7 +45,7 @@ const workflowSchema = z.object({
 
 const workflowNodeSchema = z.object({
   nodeKey: z.string(),
-  type: z.literal('NO_OP'),
+  type: z.enum(['NO_OP', 'HTTP', 'TRANSFORM', 'APPROVAL', 'NOTIFICATION']),
   name: z.string(),
   configuration: z.string().nullable(),
 });
@@ -82,8 +82,19 @@ const runSchema = z.object({
 const taskSchema = z.object({
   id: z.string().uuid(),
   nodeKey: z.string(),
+  type: z.enum(['NO_OP', 'HTTP', 'TRANSFORM', 'APPROVAL', 'NOTIFICATION']),
   status: z.string(),
   attemptCount: z.number(),
+  result: z.string().nullable(),
+});
+
+const approvalSchema = z.object({
+  id: z.string().uuid(),
+  workflowRunId: z.string().uuid(),
+  nodeKey: z.string(),
+  description: z.string().nullable(),
+  status: z.string(),
+  prompt: z.string().nullable(),
 });
 
 export type AuthResponse = z.infer<typeof authResponseSchema>;
@@ -94,6 +105,7 @@ export type WorkflowDraft = z.infer<typeof draftSchema>;
 export type WorkflowValidation = z.infer<typeof validationSchema>;
 export type WorkflowRun = z.infer<typeof runSchema>;
 export type WorkflowTask = z.infer<typeof taskSchema>;
+export type ApprovalTask = z.infer<typeof approvalSchema>;
 
 type RequestOptions = {
   method?: string;
@@ -222,4 +234,19 @@ export function getWorkflowRun(runId: string): Promise<WorkflowRun> {
 
 export function getWorkflowRunTasks(runId: string): Promise<WorkflowTask[]> {
   return apiRequest(`/api/workflow-runs/${runId}/tasks`, z.array(taskSchema));
+}
+
+export function listApprovals(): Promise<ApprovalTask[]> {
+  return apiRequest('/api/approvals', z.array(approvalSchema));
+}
+
+export function approveTask(taskId: string): Promise<ApprovalTask> {
+  return apiRequest(`/api/approvals/${taskId}/approve`, approvalSchema, { method: 'POST' });
+}
+
+export function rejectTask(taskId: string, reason: string): Promise<ApprovalTask> {
+  return apiRequest(`/api/approvals/${taskId}/reject`, approvalSchema, {
+    method: 'POST',
+    body: { reason },
+  });
 }

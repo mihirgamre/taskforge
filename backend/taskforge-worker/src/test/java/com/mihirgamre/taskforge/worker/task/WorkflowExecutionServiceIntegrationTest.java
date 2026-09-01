@@ -15,6 +15,7 @@ import com.mihirgamre.taskforge.domain.workflow.WorkflowRunRepository;
 import com.mihirgamre.taskforge.domain.workflow.WorkflowRunStatus;
 import com.mihirgamre.taskforge.domain.workflow.WorkflowVersion;
 import com.mihirgamre.taskforge.domain.workflow.WorkflowVersionRepository;
+import com.mihirgamre.taskforge.domain.workflow.WorkflowProgressionService;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -217,7 +218,7 @@ class WorkflowExecutionServiceIntegrationTest {
     @EnableAutoConfiguration
     @EntityScan("com.mihirgamre.taskforge.domain")
     @EnableJpaRepositories("com.mihirgamre.taskforge.domain")
-    @Import(TaskCompletionService.class)
+    @Import({TaskCompletionService.class, WorkflowProgressionService.class})
     static class TestApplication {
         @Bean
         Clock clock() {

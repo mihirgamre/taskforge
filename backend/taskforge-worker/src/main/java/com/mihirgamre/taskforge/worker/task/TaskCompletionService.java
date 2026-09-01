@@ -5,15 +5,10 @@ import com.mihirgamre.taskforge.domain.deadletter.DeadLetterTaskRepository;
 import com.mihirgamre.taskforge.domain.task.TaskExecution;
 import com.mihirgamre.taskforge.domain.task.TaskExecutionRepository;
 import com.mihirgamre.taskforge.domain.task.TaskStatus;
-import com.mihirgamre.taskforge.domain.workflow.WorkflowEdge;
-import com.mihirgamre.taskforge.domain.workflow.WorkflowEdgeRepository;
-import com.mihirgamre.taskforge.domain.workflow.WorkflowRun;
-import com.mihirgamre.taskforge.domain.workflow.WorkflowRunRepository;
-import com.mihirgamre.taskforge.domain.workflow.WorkflowRunStatus;
+import com.mihirgamre.taskforge.domain.workflow.WorkflowProgressionService;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -23,21 +18,18 @@ import org.springframework.transaction.annotation.Transactional;
 public class TaskCompletionService {
     private final TaskExecutionRepository repository;
     private final DeadLetterTaskRepository deadLetterRepository;
-    private final WorkflowEdgeRepository edgeRepository;
-    private final WorkflowRunRepository runRepository;
+    private final WorkflowProgressionService progressionService;
     private final Clock clock;
 
     public TaskCompletionService(
             TaskExecutionRepository repository,
             DeadLetterTaskRepository deadLetterRepository,
-            WorkflowEdgeRepository edgeRepository,
-            WorkflowRunRepository runRepository,
+            WorkflowProgressionService progressionService,
             Clock clock
     ) {
         this.repository = repository;
         this.deadLetterRepository = deadLetterRepository;
-        this.edgeRepository = edgeRepository;
-        this.runRepository = runRepository;
+        this.progressionService = progressionService;
         this.clock = clock;
     }
 
@@ -77,6 +69,27 @@ public class TaskCompletionService {
     }
 
     @Transactional
+    public boolean complete(UUID taskId, UUID leaseToken, String result) {
+        return repository.findByIdForUpdate(taskId)
+                .filter(task -> task.status() == TaskStatus.DISPATCHED)
+                .filter(task -> task.hasLeaseToken(leaseToken))
+                .map(task -> markSucceeded(task, result))
+                .orElse(false);
+    }
+
+    @Transactional
+    public boolean waitForApproval(UUID taskId, UUID leaseToken, String result) {
+        return repository.findByIdForUpdate(taskId)
+                .filter(task -> task.status() == TaskStatus.DISPATCHED)
+                .filter(task -> task.hasLeaseToken(leaseToken))
+                .map(task -> {
+                    task.markWaitingForApproval(result, Instant.now(clock));
+                    return true;
+                })
+                .orElse(false);
+    }
+
+    @Transactional
     public boolean fail(UUID taskId, String message) {
         return repository.findByIdForUpdate(taskId)
                 .filter(task -> task.status() == TaskStatus.DISPATCHED)
@@ -96,7 +109,14 @@ public class TaskCompletionService {
     private boolean markSucceeded(TaskExecution task) {
         Instant now = Instant.now(clock);
         task.markSucceeded(now);
-        updateWorkflowAfterTerminalTask(task, now, null);
+        progressionService.afterTerminalTask(task, now, null);
+        return true;
+    }
+
+    boolean markSucceeded(TaskExecution task, String result) {
+        Instant now = Instant.now(clock);
+        task.markSucceeded(result, now);
+        progressionService.afterTerminalTask(task, now, null);
         return true;
     }
 
@@ -105,7 +125,7 @@ public class TaskCompletionService {
         String failure = message == null ? "Task failed" : message;
         task.markFailed(failure, now);
         recordDeadLetter(task, failure, now);
-        updateWorkflowAfterTerminalTask(task, now, failure);
+        progressionService.afterTerminalTask(task, now, failure);
         return true;
     }
 
@@ -118,7 +138,7 @@ public class TaskCompletionService {
         } else {
             task.markDeadLettered(failure, now);
             recordDeadLetter(task, failure, now);
-            updateWorkflowAfterTerminalTask(task, now, failure);
+            progressionService.afterTerminalTask(task, now, failure);
         }
         return true;
     }
@@ -129,47 +149,4 @@ public class TaskCompletionService {
         }
     }
 
-    private void updateWorkflowAfterTerminalTask(TaskExecution task, Instant now, String failureMessage) {
-        if (task.workflowRunId() == null || task.workflowNodeKey() == null) {
-            return;
-        }
-        WorkflowRun run = runRepository.findByIdForUpdate(task.workflowRunId()).orElse(null);
-        if (run == null || run.status() != WorkflowRunStatus.RUNNING) {
-            return;
-        }
-        if (failureMessage != null) {
-            run.markFailed(failureMessage, now);
-            return;
-        }
-        List<WorkflowEdge> edges = edgeRepository.findByWorkflowVersionId(run.workflowVersionId());
-        edges.stream()
-                .filter(edge -> edge.sourceNodeKey().equals(task.workflowNodeKey()))
-                .forEach(edge -> markChildReadyIfDependenciesSucceeded(run, edge, edges, now));
-
-        List<TaskExecution> runTasks = repository.findByWorkflowRunId(run.id());
-        if (runTasks.stream().allMatch(candidate -> candidate.status() == TaskStatus.SUCCEEDED)) {
-            run.markSucceeded(now);
-        }
-    }
-
-    private void markChildReadyIfDependenciesSucceeded(
-            WorkflowRun run,
-            WorkflowEdge childEdge,
-            List<WorkflowEdge> allEdges,
-            Instant now
-    ) {
-        TaskExecution child = repository.findByWorkflowRunIdAndWorkflowNodeKey(run.id(), childEdge.targetNodeKey())
-                .orElse(null);
-        if (child == null || child.status() != TaskStatus.BLOCKED) {
-            return;
-        }
-        boolean dependenciesSucceeded = allEdges.stream()
-                .filter(edge -> edge.targetNodeKey().equals(child.workflowNodeKey()))
-                .allMatch(edge -> repository.findByWorkflowRunIdAndWorkflowNodeKey(run.id(), edge.sourceNodeKey())
-                        .filter(parent -> parent.status() == TaskStatus.SUCCEEDED)
-                        .isPresent());
-        if (dependenciesSucceeded) {
-            child.markReady(now);
-        }
-    }
 }

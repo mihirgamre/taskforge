@@ -6,7 +6,6 @@ import com.mihirgamre.taskforge.domain.inbox.InboxEvent;
 import com.mihirgamre.taskforge.domain.inbox.InboxEventRepository;
 import com.mihirgamre.taskforge.domain.task.TaskDispatchEvent;
 import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -17,19 +16,19 @@ public class TaskDispatchConsumerService {
     static final String CONSUMER_NAME = "taskforge-worker";
 
     private final InboxEventRepository inboxRepository;
-    private final TaskCompletionService completionService;
+    private final AutomationTaskExecutor taskExecutor;
     private final ObjectMapper objectMapper;
     private final Clock clock;
     private final String workerId;
 
     public TaskDispatchConsumerService(
             InboxEventRepository inboxRepository,
-            TaskCompletionService completionService,
+            AutomationTaskExecutor taskExecutor,
             ObjectMapper objectMapper,
             Clock clock
     ) {
         this.inboxRepository = inboxRepository;
-        this.completionService = completionService;
+        this.taskExecutor = taskExecutor;
         this.objectMapper = objectMapper;
         this.clock = clock;
         this.workerId = "worker-" + UUID.randomUUID();
@@ -42,9 +41,7 @@ public class TaskDispatchConsumerService {
             return false;
         }
         inboxRepository.save(new InboxEvent(event.eventId(), TaskDispatchEvent.EVENT_TYPE, CONSUMER_NAME, Instant.now(clock)));
-        return completionService.acquireLease(event.taskId(), workerId, Duration.ofSeconds(30))
-                .map(token -> completionService.complete(event.taskId(), token))
-                .orElse(false);
+        return taskExecutor.execute(event.taskId(), workerId);
     }
 
     private TaskDispatchEvent parse(String payload) {

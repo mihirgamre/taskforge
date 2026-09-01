@@ -74,6 +74,12 @@ public class TaskExecution {
     @Column(name = "failure_message")
     private String failureMessage;
 
+    @Column(name = "task_configuration", nullable = false)
+    private String taskConfiguration;
+
+    @Column(name = "task_result")
+    private String taskResult;
+
     protected TaskExecution() {
     }
 
@@ -84,6 +90,7 @@ public class TaskExecution {
         this.taskType = TaskType.NO_OP;
         this.status = TaskStatus.PENDING;
         this.description = description;
+        this.taskConfiguration = "{}";
         this.createdAt = now;
         this.updatedAt = now;
         this.nextAttemptAt = now;
@@ -95,6 +102,8 @@ public class TaskExecution {
             String tenantId,
             UUID organizationId,
             String description,
+            TaskType taskType,
+            String taskConfiguration,
             UUID workflowRunId,
             String workflowNodeKey,
             TaskStatus status,
@@ -103,9 +112,10 @@ public class TaskExecution {
         this.id = id;
         this.tenantId = tenantId;
         this.organizationId = organizationId;
-        this.taskType = TaskType.NO_OP;
+        this.taskType = taskType;
         this.status = status;
         this.description = description;
+        this.taskConfiguration = taskConfiguration == null ? "{}" : taskConfiguration;
         this.workflowRunId = workflowRunId;
         this.workflowNodeKey = workflowNodeKey;
         this.createdAt = now;
@@ -130,19 +140,7 @@ public class TaskExecution {
             TaskStatus status,
             Instant now
     ) {
-        if (status != TaskStatus.PENDING && status != TaskStatus.BLOCKED) {
-            throw new IllegalArgumentException("Workflow task must start pending or blocked");
-        }
-        return new TaskExecution(
-                UUID.randomUUID(),
-                organizationId == null ? "workflow" : organizationId.toString(),
-                organizationId,
-                description,
-                workflowRunId,
-                workflowNodeKey,
-                status,
-                now
-        );
+        return createWorkflowTask(organizationId, workflowRunId, workflowNodeKey, description, TaskType.NO_OP, "{}", status, now);
     }
 
     public static TaskExecution createWorkflowNoOp(
@@ -152,7 +150,34 @@ public class TaskExecution {
             TaskStatus status,
             Instant now
     ) {
-        return createWorkflowNoOp(null, workflowRunId, workflowNodeKey, description, status, now);
+        return createWorkflowTask(null, workflowRunId, workflowNodeKey, description, TaskType.NO_OP, "{}", status, now);
+    }
+
+    public static TaskExecution createWorkflowTask(
+            UUID organizationId,
+            UUID workflowRunId,
+            String workflowNodeKey,
+            String description,
+            TaskType taskType,
+            String taskConfiguration,
+            TaskStatus status,
+            Instant now
+    ) {
+        if (status != TaskStatus.PENDING && status != TaskStatus.BLOCKED) {
+            throw new IllegalArgumentException("Workflow task must start pending or blocked");
+        }
+        return new TaskExecution(
+                UUID.randomUUID(),
+                organizationId == null ? "workflow" : organizationId.toString(),
+                organizationId,
+                description,
+                taskType,
+                taskConfiguration,
+                workflowRunId,
+                workflowNodeKey,
+                status,
+                now
+        );
     }
 
     public UUID id() {
@@ -235,6 +260,14 @@ public class TaskExecution {
         return failureMessage;
     }
 
+    public String taskConfiguration() {
+        return taskConfiguration;
+    }
+
+    public String taskResult() {
+        return taskResult;
+    }
+
     public void markDispatched(Instant now) {
         requireStatus(TaskStatus.PENDING, "dispatch");
         this.status = TaskStatus.DISPATCHED;
@@ -265,12 +298,41 @@ public class TaskExecution {
         this.updatedAt = now;
     }
 
+    public void markSucceeded(String result, Instant now) {
+        markSucceeded(now);
+        this.taskResult = result;
+    }
+
+    public void markWaitingForApproval(String result, Instant now) {
+        requireStatus(TaskStatus.DISPATCHED, "wait for approval");
+        this.status = TaskStatus.WAITING_APPROVAL;
+        this.taskResult = result;
+        clearLease();
+        this.updatedAt = now;
+    }
+
+    public void markApproved(String result, Instant now) {
+        requireStatus(TaskStatus.WAITING_APPROVAL, "approve");
+        this.status = TaskStatus.SUCCEEDED;
+        this.taskResult = result;
+        this.completedAt = now;
+        this.updatedAt = now;
+    }
+
     public void markFailed(String message, Instant now) {
         requireStatus(TaskStatus.DISPATCHED, "fail");
         this.status = TaskStatus.FAILED;
         this.failureMessage = message;
         this.completedAt = now;
         clearLease();
+        this.updatedAt = now;
+    }
+
+    public void markFailedFromWaitingApproval(String message, Instant now) {
+        requireStatus(TaskStatus.WAITING_APPROVAL, "reject approval");
+        this.status = TaskStatus.FAILED;
+        this.failureMessage = message;
+        this.completedAt = now;
         this.updatedAt = now;
     }
 
