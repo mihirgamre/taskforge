@@ -63,6 +63,19 @@ class TaskControllerSecurityIntegrationTest {
     }
 
     @Test
+    void exposesPrometheusMetricsWithoutAuthentication() {
+        RestClient client = RestClient.create("http://localhost:" + port);
+
+        var response = client.get()
+                .uri("/actuator/prometheus")
+                .retrieve()
+                .toEntity(String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(200));
+        assertThat(response.getBody()).contains("# HELP");
+    }
+
+    @Test
     void createsAuthenticatedTaskForRegisteredOrganization() {
         RestClient client = RestClient.create("http://localhost:" + port);
         Map<?, ?> auth = client.post()

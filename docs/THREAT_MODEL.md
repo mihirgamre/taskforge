@@ -31,13 +31,16 @@
 - Refresh-token hashes and rotation reduce impact of refresh-token database exposure and reuse.
 - Basic RBAC prevents viewer roles from write operations.
 - Redis-backed rate limiting limits request bursts while preserving availability if Redis is down.
-- TaskForge does not execute arbitrary user code or external HTTP calls.
+- TaskForge does not execute arbitrary user code.
+- HTTP tasks execute only basic outbound GET/POST requests, block obvious local/private literal targets, and persist status metadata without response bodies.
+- Request correlation IDs and body-free request logs support incident investigation without logging bearer tokens, API keys, or request payloads.
+- Prometheus metrics are exposed locally for service health and request/runtime visibility.
 
 ## Planned Mitigations
 
 - Organization invitations, switching, and stricter per-feature permissions.
 - Audit logging for security-sensitive events.
-- Request validation, payload limits, and explicit error models.
-- Secret encryption, masking, and redaction tests.
-- Restricted HTTP destination validation for future HTTP tasks.
+- Broader request payload limits and explicit per-endpoint size policies.
+- Secret encryption, masking, and redaction tests for future user-managed secrets and task output streams.
+- Network-level HTTP egress controls and DNS rebinding defenses.
 - CORS policy hardening for deployed frontend origins.

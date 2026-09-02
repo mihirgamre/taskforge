@@ -14,6 +14,6 @@ class ApiErrorTest {
         assertThat(error.status()).isEqualTo(404);
         assertThat(error.code()).isEqualTo("NOT_FOUND");
         assertThat(error.details()).isEmpty();
+        assertThat(error.requestId()).isNull();
     }
 }
-

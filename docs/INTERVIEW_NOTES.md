@@ -254,3 +254,37 @@ Why store API keys hashed? Why copy node configuration into task executions? How
 
 My explanation in plain English:
 M5 makes workflows useful automation units. A workflow can include simple handlers, wait for a person to approve a step, start from an API key, or start from a durable schedule, while still using the same database-backed execution pipeline built in earlier milestones.
+
+---
+
+# M6 - Production Reliability
+
+Feature:
+Local production-reliability foundations: request correlation, request logging, Prometheus/Grafana observability, HTTP task response redaction, and k6 smoke load testing.
+
+Problem:
+Once workflows can run asynchronously, operators need enough visibility and guardrails to debug failures without leaking sensitive data or claiming unmeasured performance.
+
+Our solution:
+Every backend service emits body-free structured request logs and propagates `X-Request-Id` on responses. Actuator Prometheus metrics are exposed by control plane, scheduler, and worker, with optional local Prometheus/Grafana services in Docker Compose. HTTP tasks persist status codes only, avoiding response-body storage. k6 has a small authenticated workflow smoke script.
+
+Why we chose this design:
+Prometheus/Grafana are enough to demonstrate service-level reliability work locally without adding cloud infrastructure early. Request IDs make API failures traceable across logs while keeping logs intentionally sparse.
+
+Trade-offs:
+This is not final production observability. There are no custom dashboards beyond datasource provisioning, no distributed tracing backend, no SLO alerting, and no production capacity numbers yet.
+
+Failure modes:
+If Prometheus is down, TaskForge services keep running. If callers omit `X-Request-Id`, the backend creates one. HTTP tasks still need network-level egress controls in production to fully mitigate SSRF.
+
+How we tested it:
+Focused backend tests cover correlation ID propagation, MDC cleanup, request logging behavior, and HTTP response-body redaction. Compose validation and local smoke checks verify metrics endpoints and optional observability services.
+
+Measured results:
+Only local smoke-load results should be cited, and only from executed k6 runs. No production capacity metrics exist yet.
+
+Likely interview questions:
+Why not use a full tracing stack now? How do request IDs help incident response? What does Prometheus scrape? Why avoid logging request bodies? Why does HTTP task safety still require infrastructure egress controls?
+
+My explanation in plain English:
+M6 gives the system operational handles. A request gets a traceable ID, services expose metrics, local Prometheus can scrape them, Grafana can view them, and load testing exists as code without pretending laptop numbers are production benchmarks.

@@ -9,6 +9,8 @@ import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -17,15 +19,19 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 class AutomationTaskExecutorTest {
     private final TaskExecutionRepository repository = mock(TaskExecutionRepository.class);
     private final TaskCompletionService completionService = mock(TaskCompletionService.class);
+    private final RestClient.Builder restClientBuilder = RestClient.builder();
+    private final MockRestServiceServer server = MockRestServiceServer.bindTo(restClientBuilder).build();
     private final AutomationTaskExecutor executor = new AutomationTaskExecutor(
             repository,
             completionService,
             new ObjectMapper(),
-            RestClient.builder()
+            restClientBuilder
     );
 
     @Test
@@ -65,6 +71,21 @@ class AutomationTaskExecutorTest {
         assertThat(executor.execute(task.id(), "worker-a")).isTrue();
 
         verify(completionService).failWithRetry(task.id(), token, "HTTP task URL targets a blocked host");
+    }
+
+    @Test
+    void httpTaskPersistsOnlyStatusCode() {
+        UUID token = UUID.randomUUID();
+        TaskExecution task = workflowTask(TaskType.HTTP, "{\"url\":\"https://example.com/hook\"}");
+        when(completionService.acquireLease(eq(task.id()), eq("worker-a"), any())).thenReturn(Optional.of(token));
+        when(repository.findById(task.id())).thenReturn(Optional.of(task));
+        when(completionService.complete(eq(task.id()), eq(token), any())).thenReturn(true);
+        server.expect(requestTo("https://example.com/hook")).andRespond(withSuccess("secret-token-value", MediaType.TEXT_PLAIN));
+
+        assertThat(executor.execute(task.id(), "worker-a")).isTrue();
+
+        verify(completionService).complete(task.id(), token, "{\"statusCode\":200}");
+        server.verify();
     }
 
     private TaskExecution workflowTask(TaskType type, String configuration) {

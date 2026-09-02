@@ -40,7 +40,11 @@ Includes task handlers, schedules, cron/timezone handling, API keys, workflow AP
 
 ## M6 - Production Reliability
 
+Status: COMPLETE.
+
 Includes OpenTelemetry, Prometheus, Grafana, structured logging, security hardening, resilience testing, threat-model validation, k6 load testing, performance optimization, and measured results.
+
+M6 provides local production-reliability foundations: request correlation IDs, structured request logs, Prometheus metrics endpoints for all backend services, optional local Prometheus/Grafana Compose services, HTTP task body redaction, and a k6 smoke load script. Capacity tuning and externally verified production metrics remain M7/deployment work.
 
 ## M7 - Cloud + Portfolio Completion
 

@@ -1,10 +1,10 @@
 # Status
 
-Last updated: 2026-09-01
+Last updated: 2026-09-02
 
 ## Latest Completed Milestone
 
-M5 - Automation Capabilities.
+M6 - Production Reliability.
 
 ## Completed
 
@@ -14,6 +14,7 @@ M5 - Automation Capabilities.
 - M3 identity, organization tenancy, RBAC foundations, refresh-token rotation, and API protection are implemented.
 - M4 workflow product UI is implemented for authenticated workflow management, draft editing, DAG visualization, validation, publishing, run creation, and run tracking.
 - M5 automation capabilities are implemented for additional task types, manual approvals, API keys, API triggers, and durable schedules.
+- M6 production reliability foundations are implemented for request correlation, request logging, Prometheus/Grafana local observability, HTTP response redaction, and k6 smoke load testing.
 - Existing Phase 1 path remains: `POST /api/tasks/noop` -> PostgreSQL `PENDING` task -> scheduler claim -> Kafka dispatch -> worker completion -> PostgreSQL `SUCCEEDED`.
 
 ## Implemented
@@ -48,20 +49,26 @@ M5 - Automation Capabilities.
 - M5 cron support is intentionally limited to five-field minute/hour expressions.
 - HTTP tasks support basic GET/POST execution and block localhost, `.local`, loopback, link-local, and private IPv4 literal targets.
 - The workflow console can create non-`NO_OP` nodes, show task results, and approve/reject waiting approval tasks.
+- HTTP task responses persist only status metadata, not response bodies.
+- `X-Request-Id` is propagated to API responses and backend request logs.
+- Control plane, scheduler, and worker expose Prometheus metrics through `/actuator/prometheus`.
+- Optional local Prometheus and Grafana services are available through the Compose `observability` profile.
+- A k6 workflow smoke script exercises authenticated workflow creation, draft update, publish, and run start.
 
 ## Known Limitations
 
-- Observability, production security hardening, load testing, and cloud deployment remain later milestones.
+- Cloud deployment, final CI/CD hardening, vulnerability scanning, and portfolio packaging remain later milestones.
 - M3 supports one active organization per token. Invitations, organization switching, account recovery, account lockout, and audit logs remain later work.
 - M2 keeps retry/dead-letter policy intentionally simple; richer operator controls and observability remain later milestones.
 - M4 uses polling for live run updates because the backend SSE stream remains a later enhancement.
-- M5 HTTP task safety is a foundation, not a production SSRF sandbox; DNS rebinding protection, egress policy, allowlists, and response redaction remain M6 work.
+- M6 HTTP task safety is still application-level validation, not a network egress sandbox; DNS rebinding protection and infrastructure egress allowlists remain deployment work.
 - Notification/report tasks currently persist/log-style results only; real email/chat integrations remain future handler work.
+- k6 thresholds are smoke-level local guardrails, not production capacity claims.
 
 ## Verification Notes
 
-- M5 focused backend/frontend tests passed during implementation. See latest task output for full command results.
+- M6 focused backend tests passed during implementation. Full milestone verification results are recorded in the latest task output.
 
 ## Next Milestone
 
-M6 - Production Reliability.
+M7 - Cloud + Portfolio Completion.

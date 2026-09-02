@@ -98,10 +98,10 @@ public class AutomationTaskExecutor {
         if (!method.equals("GET") && !method.equals("POST")) {
             throw new IllegalArgumentException("HTTP task supports only GET and POST in M5");
         }
-        ResponseEntity<String> response = restClient.method(HttpMethod.valueOf(method))
+        ResponseEntity<Void> response = restClient.method(HttpMethod.valueOf(method))
                 .uri(uri)
                 .retrieve()
-                .toEntity(String.class);
+                .toBodilessEntity();
         return "{\"statusCode\":" + response.getStatusCode().value() + "}";
     }
 

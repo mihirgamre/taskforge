@@ -8,10 +8,14 @@ public record ApiError(
         int status,
         String code,
         String message,
-        List<String> details
+        List<String> details,
+        String requestId
 ) {
     public static ApiError of(int status, String code, String message) {
-        return new ApiError(Instant.now(), status, code, message, List.of());
+        return new ApiError(Instant.now(), status, code, message, List.of(), null);
+    }
+
+    public static ApiError of(int status, String code, String message, String requestId) {
+        return new ApiError(Instant.now(), status, code, message, List.of(), requestId);
     }
 }
-

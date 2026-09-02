@@ -23,6 +23,9 @@ Selections were checked on 2026-08-09 against official project release pages or 
 | Spring Kafka | Managed by Spring Boot 4.1.0 through `spring-boot-starter-kafka` | Boot 4 modularizes Kafka auto-configuration; the starter provides `KafkaTemplate` and listener container wiring. |
 | JUnit | Managed by Spring Boot 4.1.0 | Spring Boot 4.1 manages JUnit 6.x compatible test stack. |
 | Testcontainers | 1.21.4 | Current Maven Central version for the Java coordinates used here (`org.testcontainers:junit-jupiter`, `postgresql`, `kafka`). |
+| Prometheus | 3.14.0 | Current stable Prometheus 3.x Docker tag; Prometheus LTS policy keeps 3.13 supported, but local development uses the newer stable patch line. |
+| Grafana | 13.2.1 | Current stable Grafana Docker tag for local dashboards. |
+| k6 | 2.2.0 | Current stable k6 Docker tag for local smoke load tests. |
 
 ## Local Verification Notes
 
