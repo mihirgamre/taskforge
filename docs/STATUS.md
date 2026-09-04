@@ -1,10 +1,10 @@
 # Status
 
-Last updated: 2026-09-02
+Last updated: 2026-09-04
 
 ## Latest Completed Milestone
 
-M6 - Production Reliability.
+M7 - Cloud + Portfolio Completion.
 
 ## Completed
 
@@ -15,6 +15,7 @@ M6 - Production Reliability.
 - M4 workflow product UI is implemented for authenticated workflow management, draft editing, DAG visualization, validation, publishing, run creation, and run tracking.
 - M5 automation capabilities are implemented for additional task types, manual approvals, API keys, API triggers, and durable schedules.
 - M6 production reliability foundations are implemented for request correlation, request logging, Prometheus/Grafana local observability, HTTP response redaction, and k6 smoke load testing.
+- M7 cloud and portfolio readiness is implemented with AWS Terraform, CI/CD hardening, security workflows, deployment docs, and portfolio notes.
 - Existing Phase 1 path remains: `POST /api/tasks/noop` -> PostgreSQL `PENDING` task -> scheduler claim -> Kafka dispatch -> worker completion -> PostgreSQL `SUCCEEDED`.
 
 ## Implemented
@@ -54,21 +55,26 @@ M6 - Production Reliability.
 - Control plane, scheduler, and worker expose Prometheus metrics through `/actuator/prometheus`.
 - Optional local Prometheus and Grafana services are available through the Compose `observability` profile.
 - A k6 workflow smoke script exercises authenticated workflow creation, draft update, publish, and run start.
+- AWS Terraform defines the intended CloudFront/S3, ALB, ECS Fargate, RDS PostgreSQL, ElastiCache Redis, ECR, CloudWatch, and managed Kafka integration shape.
+- GitHub Actions validate backend/frontend builds, Docker image builds, dependency review, npm audit, CodeQL, and manual AWS deployment through OIDC.
 
 ## Known Limitations
 
-- Cloud deployment, final CI/CD hardening, vulnerability scanning, and portfolio packaging remain later milestones.
+- Terraform has not been applied to a real AWS account in this repository session.
+- No production DNS/TLS, hosted deployment URL, CloudWatch dashboard, or production capacity metric is claimed yet.
+- GitHub CLI authentication is currently invalid in this local environment; Git push may still work through the configured Git credential helper.
 - M3 supports one active organization per token. Invitations, organization switching, account recovery, account lockout, and audit logs remain later work.
 - M2 keeps retry/dead-letter policy intentionally simple; richer operator controls and observability remain later milestones.
 - M4 uses polling for live run updates because the backend SSE stream remains a later enhancement.
 - M6 HTTP task safety is still application-level validation, not a network egress sandbox; DNS rebinding protection and infrastructure egress allowlists remain deployment work.
 - Notification/report tasks currently persist/log-style results only; real email/chat integrations remain future handler work.
 - k6 thresholds are smoke-level local guardrails, not production capacity claims.
+- Resume metrics remain limited to locally verified checks until a real cloud environment is measured.
 
 ## Verification Notes
 
-- M6 focused backend tests passed during implementation. Full milestone verification results are recorded in the latest task output.
+- M7 verification results are recorded in the latest task output.
 
 ## Next Milestone
 
-M7 - Cloud + Portfolio Completion.
+Manual browser QA and final polish pass.

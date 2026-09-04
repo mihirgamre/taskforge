@@ -1,0 +1,92 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: Container image tag to build and deploy.
+        required: true
+        default: latest
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - uses: aws-actions/amazon-ecr-login@v3
+        id: ecr
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Build and push backend images
+        shell: bash
+        run: |
+          set -euo pipefail
+          for service in control-plane scheduler worker; do
+            repo="${{ steps.ecr.outputs.registry }}/taskforge/${service}"
+            module="taskforge-${service}"
+            docker build -f infra/docker/backend.Dockerfile --build-arg MODULE="${module}" -t "${repo}:${{ inputs.image_tag }}" backend
+            docker push "${repo}:${{ inputs.image_tag }}"
+          done
+      - name: Refresh ECS services
+        shell: bash
+        run: |
+          set -euo pipefail
+          for service in control-plane scheduler worker; do
+            repo="${{ steps.ecr.outputs.registry }}/taskforge/${service}"
+            task_definition_arn="$(aws ecs describe-services \
+              --cluster "${{ vars.ECS_CLUSTER_NAME }}" \
+              --services "${service}" \
+              --query 'services[0].taskDefinition' \
+              --output text)"
+            aws ecs describe-task-definition \
+              --task-definition "${task_definition_arn}" \
+              --query taskDefinition \
+              > "task-definition-${service}.json"
+            jq \
+              --arg image "${repo}:${{ inputs.image_tag }}" \
+              '.containerDefinitions[0].image = $image
+                | del(
+                    .taskDefinitionArn,
+                    .revision,
+                    .status,
+                    .requiresAttributes,
+                    .compatibilities,
+                    .registeredAt,
+                    .registeredBy
+                  )' \
+              "task-definition-${service}.json" \
+              > "new-task-definition-${service}.json"
+            new_task_definition_arn="$(aws ecs register-task-definition \
+              --cli-input-json "file://new-task-definition-${service}.json" \
+              --query 'taskDefinition.taskDefinitionArn' \
+              --output text)"
+            aws ecs update-service \
+              --cluster "${{ vars.ECS_CLUSTER_NAME }}" \
+              --service "${service}" \
+              --task-definition "${new_task_definition_arn}"
+          done
+      - name: Build frontend
+        run: npm ci && npm run build
+        working-directory: frontend
+      - name: Upload frontend assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          aws s3 sync frontend/dist "s3://${{ vars.FRONTEND_BUCKET_NAME }}" --delete
+          if [ -n "${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}" ]; then
+            aws cloudfront create-invalidation \
+              --distribution-id "${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}" \
+              --paths "/*"
+          fi

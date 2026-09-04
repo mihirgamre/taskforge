@@ -16,6 +16,8 @@
 - HTTP task execution blocks localhost, `.local`, loopback, link-local, and private IPv4 literal targets.
 - HTTP task execution persists only response status metadata, not response bodies.
 - API responses and service request logs include sanitized `X-Request-Id` values for incident triage without logging request bodies, query strings, or authorization headers.
+- GitHub Actions include dependency review, npm audit, and CodeQL workflows.
+- AWS deployment uses GitHub OIDC and Terraform variables/Secrets Manager references rather than repository-stored cloud credentials.
 - Phase 1 task reads now query by authenticated organization id.
 - Phase 1 API errors return sanitized error bodies for malformed JSON, invalid UUIDs, missing tenant headers, and missing tasks.
 - Control plane disables generated default Spring Security credentials in Phase 1 so startup logs do not contain a development password.
@@ -31,8 +33,8 @@
 - Full log/trace redaction policies across future task output streams.
 - Production SSRF hardening for HTTP tasks, including DNS rebinding defenses, network egress policy, and allowlists.
 - Stronger brute-force controls and audit logging.
-- Dependency, secret, and container vulnerability scanning in CI.
+- Container vulnerability policy gates beyond ECR scan-on-push.
 
 ## Current Limits
 
-Access-token revocation before expiry, MFA, account recovery, invitation workflows, audit logs, and encrypted user-managed secrets are not implemented yet. Redis rate limiting currently fails open if Redis is unavailable so Redis does not become a hard dependency for API availability. HTTP task safety reduces obvious SSRF and response-leak risk, but it is not a production-grade network sandbox.
+Access-token revocation before expiry, MFA, account recovery, invitation workflows, audit logs, and encrypted user-managed secrets are not implemented yet. Redis rate limiting currently fails open if Redis is unavailable so Redis does not become a hard dependency for API availability. HTTP task safety reduces obvious SSRF and response-leak risk, but it is not a production-grade network sandbox. Terraform has not been applied to a real AWS account in this session.

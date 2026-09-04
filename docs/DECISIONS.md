@@ -19,3 +19,5 @@ This file summarizes current accepted architectural decisions. Full records live
 - M3 replaces development tenant headers with auth-backed organization tenancy using BCrypt password hashes, JWT access tokens, durable rotating refresh tokens, membership roles, and Redis-backed rate limiting.
 - M6 uses Prometheus-compatible actuator metrics and an optional local Prometheus/Grafana Compose profile rather than adding a heavier observability platform before cloud deployment.
 - M6 request logging records method, path, status, duration, and request id only; request bodies, query strings, authorization headers, and API keys are intentionally excluded.
+- M7 keeps AWS deployment on ECS Fargate per ADR 0010, serves frontend assets from S3/CloudFront, and routes `/api/*` through CloudFront to the public ALB so the browser can keep using relative API URLs.
+- M7 treats managed Kafka as an external AWS input instead of creating MSK in the base Terraform blueprint, because MSK sizing and cost should be chosen deliberately for the deployment account.

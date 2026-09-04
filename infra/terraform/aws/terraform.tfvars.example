@@ -1,0 +1,9 @@
+aws_region           = "us-east-1"
+environment          = "prod"
+image_tag            = "replace-with-git-sha"
+frontend_bucket_name = "replace-with-globally-unique-taskforge-bucket"
+jwt_secret_arn       = "arn:aws:secretsmanager:us-east-1:123456789012:secret:taskforge/jwt"
+kafka_bootstrap_servers = "replace-with-msk-bootstrap-brokers"
+
+# Restrict this for demos when possible.
+allowed_http_cidr_blocks = ["0.0.0.0/0"]

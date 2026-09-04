@@ -288,3 +288,46 @@ Why not use a full tracing stack now? How do request IDs help incident response?
 
 My explanation in plain English:
 M6 gives the system operational handles. A request gets a traceable ID, services expose metrics, local Prometheus can scrape them, Grafana can view them, and load testing exists as code without pretending laptop numbers are production benchmarks.
+
+---
+
+# M7 - Cloud And Portfolio Completion
+
+Feature:
+AWS deployment blueprint, CI/CD hardening, and portfolio packaging.
+
+Problem:
+The project needed a credible production deployment direction and portfolio story without pretending it had already run production traffic.
+
+Our solution:
+M7 adds Terraform for CloudFront/S3, ALB, ECS Fargate, RDS PostgreSQL, ElastiCache Redis, ECR, CloudWatch, and managed Kafka integration. CI validates backend/frontend builds, Docker images, dependency review, npm audit, CodeQL, and manual AWS deployment through OIDC.
+
+Execution flow:
+GitHub Actions builds and verifies the application. The manual deploy workflow can build/push backend images, force ECS service deployments, build frontend assets, sync them to S3, and optionally invalidate CloudFront after AWS variables are configured.
+
+Why we chose this design:
+ECS Fargate demonstrates production container deployment without Kubernetes overhead. CloudFront routes `/api/*` to the ALB so the existing relative frontend API calls work in cloud hosting.
+
+Alternatives considered:
+Kubernetes, single-VM deployment, and fully local-only demo.
+
+Trade-offs:
+The Terraform blueprint is cost-conscious but not yet a fully applied production environment. MSK is passed in as a managed dependency so Kafka sizing is a deliberate account-level choice.
+
+Failure modes:
+Misconfigured secrets, missing MSK brokers, missing GitHub OIDC role, or missing frontend bucket variables will block deployment.
+
+How we tested it:
+Local backend/frontend and Docker verification remain the source of truth for this session. Terraform validation was not run because Terraform is not installed locally.
+
+Measured results:
+No production throughput, uptime, or cost metrics are claimed.
+
+Important files/classes:
+`infra/terraform/aws`, `.github/workflows`, `docs/DEPLOYMENT.md`, `docs/PORTFOLIO.md`, and `README.md`.
+
+Likely interview questions:
+Why ECS Fargate instead of Kubernetes? How does CloudFront reach the API? Where are secrets stored? What remains before production launch?
+
+My explanation in plain English:
+M7 turns TaskForge from a local project into a cloud-ready portfolio system. The code is still verified locally, while Terraform and GitHub Actions define how it should be deployed safely once real AWS account values and secrets are supplied.

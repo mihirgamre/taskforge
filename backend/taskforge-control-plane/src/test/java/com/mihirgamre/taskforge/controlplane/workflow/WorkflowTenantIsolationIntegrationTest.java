@@ -101,6 +101,33 @@ class WorkflowTenantIsolationIntegrationTest {
         assertThat(draft).containsEntry("status", "DRAFT");
     }
 
+    @Test
+    void canReplaceDraftWithSameNodeKeys() {
+        RestClient client = RestClient.create("http://localhost:" + port);
+        String suffix = UUID.randomUUID().toString();
+        String token = (String) register(client, "replace-draft-%s@example.com".formatted(suffix), "Replace Draft Org")
+                .get("accessToken");
+        Map<String, Object> workflow = createWorkflow(client, token, "replace draft");
+        String draft = """
+                {
+                  "nodes": [
+                    {"nodeKey":"A","type":"NO_OP","name":"Start","configuration":"{}"},
+                    {"nodeKey":"B","type":"NO_OP","name":"Finish","configuration":"{}"}
+                  ],
+                  "edges": [
+                    {"sourceNodeKey":"A","targetNodeKey":"B"}
+                  ]
+                }
+                """;
+
+        replaceDraft(client, token, workflow.get("id"), draft);
+        Map<String, Object> replaced = replaceDraft(client, token, workflow.get("id"), draft);
+
+        assertThat(replaced).containsEntry("workflowId", workflow.get("id"));
+        assertThat((List<?>) replaced.get("nodes")).hasSize(2);
+        assertThat((List<?>) replaced.get("edges")).hasSize(1);
+    }
+
     private Map<String, Object> createWorkflow(RestClient client, String token, String name) {
         return client.post()
                 .uri("/api/workflows")
@@ -109,6 +136,17 @@ class WorkflowTenantIsolationIntegrationTest {
                 .body("""
                         {"name":"%s","description":"tenant scoped"}
                         """.formatted(name))
+                .retrieve()
+                .body(new org.springframework.core.ParameterizedTypeReference<>() {
+                });
+    }
+
+    private Map<String, Object> replaceDraft(RestClient client, String token, Object workflowId, String draft) {
+        return client.patch()
+                .uri("/api/workflows/{workflowId}/draft", workflowId)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(draft)
                 .retrieve()
                 .body(new org.springframework.core.ParameterizedTypeReference<>() {
                 });

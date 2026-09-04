@@ -48,7 +48,11 @@ M6 provides local production-reliability foundations: request correlation IDs, s
 
 ## M7 - Cloud + Portfolio Completion
 
+Status: COMPLETE.
+
 Includes AWS, Terraform, ECS/Fargate, RDS, managed Redis/Kafka approach, CI/CD hardening, vulnerability scanning, README, diagrams, screenshots/demo, final interview notes, and verified resume metrics.
+
+M7 provides an AWS ECS/Fargate Terraform blueprint, hardened GitHub Actions CI/security/deploy workflows, deployment documentation, and portfolio/demo notes. Production metrics are intentionally limited to local verification results until the Terraform environment is applied and measured.
 
 ## Old Phase Mapping
 

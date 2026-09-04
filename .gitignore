@@ -45,7 +45,14 @@ pgdata/
 redis-data/
 kafka-data/
 
+# Terraform local state and variables
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+.terraform.lock.hcl
+
 # Coverage and reports
 coverage/
 *.lcov
-

@@ -102,6 +102,8 @@ public class WorkflowCommandService {
         requestValidation.throwIfInvalid();
         edgeRepository.deleteByWorkflowVersionId(draft.id());
         nodeRepository.deleteByWorkflowVersionId(draft.id());
+        edgeRepository.flush();
+        nodeRepository.flush();
         Instant now = Instant.now(clock);
         List<WorkflowNode> nodes = request.nodes().stream()
                 .map(node -> new WorkflowNode(
