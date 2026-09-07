@@ -118,11 +118,11 @@ function AuthPanel({ onAuthenticated }: { onAuthenticated: (auth: AuthResponse) 
 
   return (
     <main className="mx-auto grid max-w-7xl gap-8 px-6 py-8 lg:grid-cols-[1fr_1.2fr]">
-      <section className="flex min-h-[520px] flex-col justify-between rounded-md border border-[#d6dee3] bg-white p-6">
+      <section className="flex min-h-[520px] flex-col justify-between overflow-hidden rounded-md border border-white/70 bg-white/88 p-6 shadow-sm shadow-[#17202a]/7 backdrop-blur">
         <div>
-          <p className="text-sm font-medium uppercase tracking-wide text-[#4e6b74]">TaskForge Console</p>
-          <h2 className="mt-2 text-3xl font-semibold">Build and run authenticated workflow DAGs.</h2>
-          <p className="mt-4 max-w-xl text-[#52606a]">
+          <p className="text-sm font-semibold uppercase tracking-wide text-[#0a6d78]">TaskForge Console</p>
+          <h2 className="mt-2 max-w-2xl text-4xl font-semibold leading-tight text-[#17202a]">Build and run authenticated workflow DAGs.</h2>
+          <p className="mt-4 max-w-xl text-base leading-7 text-[#52606a]">
             Sign in to create editable workflow drafts, validate dependencies, publish immutable versions, and track run state.
           </p>
         </div>
@@ -132,8 +132,8 @@ function AuthPanel({ onAuthenticated }: { onAuthenticated: (auth: AuthResponse) 
           <Metric label="Updates" value="Polling" />
         </div>
       </section>
-      <section className="rounded-md border border-[#d6dee3] bg-white p-6">
-        <div className="inline-flex rounded-md border border-[#c8d4db] p-1">
+      <section className="rounded-md border border-white/70 bg-white/92 p-6 shadow-sm shadow-[#17202a]/7 backdrop-blur">
+        <div className="inline-flex rounded-md border border-[#c8d4db] bg-[#f7faf9] p-1">
           <button className={modeButton(mode === 'register')} type="button" onClick={() => setMode('register')}>
             Register
           </button>
@@ -189,7 +189,7 @@ function WorkflowConsole({ auth, onSignOut }: { auth: AuthResponse; onSignOut: (
   return (
     <main className="mx-auto grid max-w-7xl gap-6 px-6 py-8 xl:grid-cols-[320px_1fr]">
       <aside className="space-y-4">
-        <section className="rounded-md border border-[#d6dee3] bg-white p-4">
+        <section className={`${panelClass} p-4`}>
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-sm font-medium text-[#52606a]">{auth.organization.name}</p>
@@ -208,7 +208,7 @@ function WorkflowConsole({ auth, onSignOut }: { auth: AuthResponse; onSignOut: (
             setActiveRunEdges([]);
           }}
         />
-        <section className="rounded-md border border-[#d6dee3] bg-white">
+        <section className={panelClass}>
           <div className="border-b border-[#d6dee3] px-4 py-3">
             <h2 className="font-semibold">Workflows</h2>
           </div>
@@ -216,8 +216,8 @@ function WorkflowConsole({ auth, onSignOut }: { auth: AuthResponse; onSignOut: (
             {workflowsQuery.isLoading ? <p className="p-3 text-sm text-[#52606a]">Loading workflows</p> : null}
             {workflowsQuery.data?.map((workflow) => (
               <button
-                className={`w-full rounded-md px-3 py-3 text-left text-sm ${
-                  selectedWorkflowId === workflow.id ? 'bg-[#e7f3f2] text-[#0a5962]' : 'hover:bg-[#f0f4f5]'
+                className={`w-full rounded-md px-3 py-3 text-left text-sm transition duration-200 ${
+                  selectedWorkflowId === workflow.id ? 'bg-[#e7f3f2] text-[#0a5962] shadow-sm' : 'hover:bg-[#f0f4f5] hover:text-[#17202a]'
                 }`}
                 key={workflow.id}
                 type="button"
@@ -249,7 +249,7 @@ function WorkflowConsole({ auth, onSignOut }: { auth: AuthResponse; onSignOut: (
           }}
         />
       ) : (
-        <section className="rounded-md border border-[#d6dee3] bg-white p-6">
+        <section className={`${panelClass} p-6`}>
           <h2 className="text-xl font-semibold">No workflow selected</h2>
           <p className="mt-2 text-[#52606a]">Create a workflow to open the builder.</p>
         </section>
@@ -283,7 +283,7 @@ function CreateWorkflowPanel({ onCreated }: { onCreated: (workflow: WorkflowSumm
   });
 
   return (
-    <section className="rounded-md border border-[#d6dee3] bg-white p-4">
+    <section className={`${panelClass} p-4`}>
       <h2 className="font-semibold">New workflow</h2>
       <form
         className="mt-4 grid gap-3"
@@ -325,7 +325,8 @@ function WorkflowWorkspace({
   const [nodes, setNodes] = useState<WorkflowNode[]>(initialNodes);
   const [edges, setEdges] = useState<WorkflowEdge[]>(initialEdges);
   const [validation, setValidation] = useState<string[]>([]);
-  const canRun = Boolean(workflow?.publishedVersionId || draftQuery.data?.status === 'PUBLISHED');
+  const draftReady = Boolean(draftQuery.data);
+  const canRun = draftReady && Boolean(workflow?.publishedVersionId || draftQuery.data?.status === 'PUBLISHED');
 
   useEffect(() => {
     if (draftQuery.data) {
@@ -385,7 +386,7 @@ function WorkflowWorkspace({
 
   return (
     <div className="grid gap-6">
-      <section className="rounded-md border border-[#d6dee3] bg-white">
+      <section className={panelClass}>
         <div className="flex flex-col gap-3 border-b border-[#d6dee3] px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h2 className="text-xl font-semibold">Workflow builder</h2>
@@ -401,7 +402,7 @@ function WorkflowWorkspace({
                 clearFeedback();
                 saveMutation.mutate();
               }}
-              disabled={saveMutation.isPending}
+              disabled={saveMutation.isPending || !draftReady}
             >
               Save
             </button>
@@ -412,7 +413,7 @@ function WorkflowWorkspace({
                 clearFeedback();
                 validateMutation.mutate();
               }}
-              disabled={validateMutation.isPending}
+              disabled={validateMutation.isPending || !draftReady}
             >
               Validate
             </button>
@@ -423,7 +424,7 @@ function WorkflowWorkspace({
                 clearFeedback();
                 publishMutation.mutate();
               }}
-              disabled={publishMutation.isPending}
+              disabled={publishMutation.isPending || !draftReady}
             >
               Publish
             </button>
@@ -445,22 +446,26 @@ function WorkflowWorkspace({
             </button>
           </div>
         </div>
-        <div className="grid gap-5 p-5 lg:grid-cols-[1fr_340px]">
-          <GraphView nodes={nodes} edges={edges} />
-          <DraftEditor
-            nodes={nodes}
-            edges={edges}
-            onFeedback={setValidation}
-            onNodesChange={(nextNodes) => {
-              clearFeedback();
-              setNodes(nextNodes);
-            }}
-            onEdgesChange={(nextEdges) => {
-              clearFeedback();
-              setEdges(nextEdges);
-            }}
-          />
-        </div>
+        {draftReady ? (
+          <div className="grid gap-5 p-5 lg:grid-cols-[1fr_340px]">
+            <GraphView nodes={nodes} edges={edges} />
+            <DraftEditor
+              nodes={nodes}
+              edges={edges}
+              onFeedback={setValidation}
+              onNodesChange={(nextNodes) => {
+                clearFeedback();
+                setNodes(nextNodes);
+              }}
+              onEdgesChange={(nextEdges) => {
+                clearFeedback();
+                setEdges(nextEdges);
+              }}
+            />
+          </div>
+        ) : (
+          <div className="p-5 text-sm text-[#52606a]">Loading selected workflow...</div>
+        )}
         <ActionState errors={currentErrors} />
       </section>
       <RunPanel runId={activeRunId} edges={activeRunEdges} />
@@ -619,7 +624,7 @@ function RunPanel({ runId, edges }: { runId: string | null; edges: WorkflowEdge[
 
   if (!runId) {
     return (
-      <section className="rounded-md border border-[#d6dee3] bg-white p-5">
+      <section className={`${panelClass} p-5`}>
         <h2 className="text-lg font-semibold">Run detail</h2>
         <p className="mt-2 text-sm text-[#52606a]">Start a published workflow to open run tracking.</p>
       </section>
@@ -627,7 +632,7 @@ function RunPanel({ runId, edges }: { runId: string | null; edges: WorkflowEdge[
   }
 
   return (
-    <section className="rounded-md border border-[#d6dee3] bg-white">
+    <section className={panelClass}>
       <div className="border-b border-[#d6dee3] px-5 py-4">
         <h2 className="text-lg font-semibold">Run detail</h2>
         <p className="text-sm text-[#52606a]">
@@ -635,8 +640,8 @@ function RunPanel({ runId, edges }: { runId: string | null; edges: WorkflowEdge[
         </p>
       </div>
       <div className="grid gap-5 p-5 lg:grid-cols-[1fr_320px]">
-        <GraphView nodes={tasksToNodes(tasksQuery.data)} edges={edges} tasks={tasksQuery.data} />
-        <RunSummary run={runQuery.data} tasks={tasksQuery.data ?? []} />
+        <GraphView nodes={tasksToNodes(tasksQuery.data)} edges={edges} tasks={sortWorkflowTasks(tasksQuery.data ?? [])} />
+        <RunSummary run={runQuery.data} tasks={sortWorkflowTasks(tasksQuery.data ?? [])} />
       </div>
     </section>
   );
@@ -664,7 +669,7 @@ function GraphView({
   const taskByKey = new Map((tasks ?? []).map((task) => [task.nodeKey, task]));
 
   return (
-    <div className="overflow-auto rounded-md border border-[#d6dee3] bg-[#fbfcfc]">
+    <div className="overflow-auto rounded-md border border-[#d6dee3] bg-[#fbfcfc] shadow-inner shadow-[#17202a]/5">
       <svg className="block h-[300px]" role="img" aria-label="Workflow graph" viewBox={`0 0 ${width} 300`}>
         <defs>
           <marker id="arrow" markerHeight="8" markerWidth="8" orient="auto" refX="7" refY="4">
@@ -711,7 +716,7 @@ function GraphView({
 
 function RunSummary({ run, tasks }: { run?: WorkflowRun; tasks: WorkflowTask[] }) {
   return (
-    <div className="rounded-md border border-[#d6dee3] p-4">
+    <div className="rounded-md border border-[#d6dee3] bg-white/70 p-4">
       <h3 className="font-semibold">Tasks</h3>
       <div className="mt-3 grid gap-2">
         {tasks.map((task) => (
@@ -758,7 +763,7 @@ function ApprovalPanel({ runId }: { runId: string | null }) {
   });
 
   return (
-    <section className="rounded-md border border-[#d6dee3] bg-white p-5">
+    <section className={`${panelClass} p-5`}>
       <h2 className="text-lg font-semibold">Approvals</h2>
       {approvalsQuery.data?.length ? (
         <div className="mt-3 grid gap-3">
@@ -814,7 +819,7 @@ function Field({ label, error, children }: { label: string; error?: string; chil
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md border border-[#d6dee3] p-3">
+    <div className="rounded-md border border-[#d6dee3] bg-white/55 p-3 transition duration-200 hover:-translate-y-0.5 hover:bg-white hover:shadow-sm">
       <p className="text-xs uppercase tracking-wide">{label}</p>
       <p className="mt-1 font-semibold text-[#17202a]">{value}</p>
     </div>
@@ -822,7 +827,7 @@ function Metric({ label, value }: { label: string; value: string }) {
 }
 
 function tasksToNodes(tasks: WorkflowTask[] | undefined): WorkflowNode[] {
-  return (tasks ?? []).map((task) => ({
+  return sortWorkflowTasks(tasks ?? []).map((task) => ({
     nodeKey: task.nodeKey,
     type: task.type,
     name: task.status,
@@ -830,8 +835,12 @@ function tasksToNodes(tasks: WorkflowTask[] | undefined): WorkflowNode[] {
   }));
 }
 
+function sortWorkflowTasks(tasks: WorkflowTask[]): WorkflowTask[] {
+  return [...tasks].sort((left, right) => left.nodeKey.localeCompare(right.nodeKey));
+}
+
 function modeButton(active: boolean) {
-  return `rounded px-3 py-2 text-sm font-medium ${active ? 'bg-[#0a6d78] text-white' : 'text-[#52606a] hover:bg-[#eef3f4]'}`;
+  return `rounded px-3 py-2 text-sm font-medium transition duration-200 ${active ? 'bg-[#0a6d78] text-white shadow-sm' : 'text-[#52606a] hover:bg-white hover:text-[#17202a]'}`;
 }
 
 function statusFill(status?: string) {
@@ -854,8 +863,9 @@ function statusFill(status?: string) {
 }
 
 const inputClass =
-  'w-full rounded-md border border-[#c8d4db] bg-white px-3 py-2 text-sm outline-none focus:border-[#0a6d78] focus:ring-2 focus:ring-[#b9dfe3]';
-const primaryButton = 'rounded-md bg-[#0a6d78] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60';
+  'w-full rounded-md border border-[#c8d4db] bg-white px-3 py-2 text-sm outline-none transition duration-200 placeholder:text-[#8b9ba3] hover:border-[#9fb5bc] focus:border-[#0a6d78] focus:ring-2 focus:ring-[#b9dfe3]';
+const panelClass = 'rounded-md border border-white/70 bg-white/90 shadow-sm shadow-[#17202a]/7 backdrop-blur';
+const primaryButton = 'rounded-md bg-[#0a6d78] px-4 py-2 text-sm font-semibold text-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:bg-[#085d66] hover:shadow-md disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none';
 const secondaryButton =
-  'rounded-md border border-[#b8c8d0] bg-white px-4 py-2 text-sm font-semibold text-[#24343d] hover:bg-[#eef3f4] disabled:cursor-not-allowed disabled:opacity-60';
-const ghostButton = 'rounded px-2 py-1 text-sm font-medium text-[#52606a] hover:bg-[#eef3f4]';
+  'rounded-md border border-[#b8c8d0] bg-white px-4 py-2 text-sm font-semibold text-[#24343d] shadow-sm transition duration-200 hover:-translate-y-0.5 hover:bg-[#eef3f4] hover:shadow-md disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none';
+const ghostButton = 'rounded px-2 py-1 text-sm font-medium text-[#52606a] transition duration-200 hover:bg-[#eef3f4] hover:text-[#17202a]';

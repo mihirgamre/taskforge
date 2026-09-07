@@ -1,17 +1,20 @@
 export function StatusPage() {
   return (
     <main className="mx-auto max-w-7xl px-6 py-8">
-      <h2 className="text-2xl font-semibold">Implementation status</h2>
+      <div className="mb-6">
+        <p className="text-sm font-semibold uppercase tracking-wide text-[#0a6d78]">Project readiness</p>
+        <h2 className="mt-1 text-2xl font-semibold">Implementation status</h2>
+      </div>
       <dl className="mt-6 grid gap-4 md:grid-cols-3">
-        <div className="rounded-md border border-[#d6dee3] bg-white p-4">
+        <div className="rounded-md border border-white/70 bg-white/88 p-5 shadow-sm shadow-[#17202a]/7 transition duration-200 hover:-translate-y-0.5 hover:shadow-md">
           <dt className="text-sm font-medium text-[#52606a]">Backend</dt>
           <dd className="mt-1 text-lg font-semibold">M7 complete</dd>
         </div>
-        <div className="rounded-md border border-[#d6dee3] bg-white p-4">
+        <div className="rounded-md border border-white/70 bg-white/88 p-5 shadow-sm shadow-[#17202a]/7 transition duration-200 hover:-translate-y-0.5 hover:shadow-md">
           <dt className="text-sm font-medium text-[#52606a]">Frontend</dt>
           <dd className="mt-1 text-lg font-semibold">Workflow console</dd>
         </div>
-        <div className="rounded-md border border-[#d6dee3] bg-white p-4">
+        <div className="rounded-md border border-white/70 bg-white/88 p-5 shadow-sm shadow-[#17202a]/7 transition duration-200 hover:-translate-y-0.5 hover:shadow-md">
           <dt className="text-sm font-medium text-[#52606a]">Execution</dt>
           <dd className="mt-1 text-lg font-semibold">DAG + automation active</dd>
         </div>

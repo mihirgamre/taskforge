@@ -1,6 +1,6 @@
 # Status
 
-Last updated: 2026-09-04
+Last updated: 2026-09-07
 
 ## Latest Completed Milestone
 
@@ -57,6 +57,7 @@ M7 - Cloud + Portfolio Completion.
 - A k6 workflow smoke script exercises authenticated workflow creation, draft update, publish, and run start.
 - AWS Terraform defines the intended CloudFront/S3, ALB, ECS Fargate, RDS PostgreSQL, ElastiCache Redis, ECR, CloudWatch, and managed Kafka integration shape.
 - GitHub Actions validate backend/frontend builds, Docker image builds, dependency review, npm audit, CodeQL, and manual AWS deployment through OIDC.
+- Final browser QA polish updated the workflow console shell, status page, card/button interaction states, loading-state safeguards, and deterministic run task ordering.
 
 ## Known Limitations
 
@@ -74,7 +75,8 @@ M7 - Cloud + Portfolio Completion.
 ## Verification Notes
 
 - M7 verification results are recorded in the latest task output.
+- Final browser QA verified sign-in, status navigation, workflow creation, validation, publishing, run execution, and browser console cleanliness after the UI polish build.
 
 ## Next Milestone
 
-Manual browser QA and final polish pass.
+No remaining implementation milestone. Remaining work is optional deployment/demo presentation polish.
