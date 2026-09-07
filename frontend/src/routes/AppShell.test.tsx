@@ -85,6 +85,111 @@ describe('AppShell', () => {
     await user.click(runButton);
     expect(fetchMock).not.toHaveBeenCalledWith(expect.stringContaining('/runs'), expect.anything());
   });
+
+  it('shows a runnable published workflow when no editable draft exists', async () => {
+    window.localStorage.setItem('taskforge.accessToken', 'access-token');
+    window.localStorage.setItem('taskforge.refreshToken', 'refresh-token');
+    vi.spyOn(window, 'fetch').mockImplementation((input) => {
+      const path = input instanceof Request ? input.url : String(input);
+      if (path.endsWith('/api/auth/refresh')) {
+        return Promise.resolve(jsonResponse({
+          accessToken: 'new-access-token',
+          refreshToken: 'new-refresh-token',
+          user: { id: '11111111-1111-4111-8111-111111111111', email: 'user@example.com' },
+          organization: { id: '22222222-2222-4222-8222-222222222222', name: 'TaskForge Lab', role: 'OWNER' },
+        }));
+      }
+      if (path.endsWith('/api/workflows')) {
+        return Promise.resolve(jsonResponse([
+          {
+            id: '33333333-3333-4333-8333-333333333333',
+            name: 'Published workflow',
+            description: 'Demo',
+            status: 'ACTIVE',
+            draftVersionId: null,
+            draftVersionNumber: null,
+            publishedVersionId: '55555555-5555-4555-8555-555555555555',
+            publishedVersionNumber: 1,
+            createdAt: '2026-08-30T00:00:00Z',
+            updatedAt: '2026-08-30T00:00:00Z',
+          },
+        ]));
+      }
+      if (path.endsWith('/api/workflows/33333333-3333-4333-8333-333333333333/draft')) {
+        return Promise.resolve(jsonResponse({ message: 'Workflow has no editable draft' }, 409));
+      }
+      if (path.endsWith('/api/approvals')) {
+        return Promise.resolve(jsonResponse([]));
+      }
+      return Promise.resolve(jsonResponse({}, 404));
+    });
+
+    renderApp();
+
+    await waitFor(() => expect(screen.getByText('Published workflow')).toBeInTheDocument());
+    expect(await screen.findByText(/no editable draft/i)).toBeInTheDocument();
+    expect(screen.getByText('Published v1 - read-only')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Validate' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Publish' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Run' })).toBeEnabled();
+  });
+
+  it('keeps a loaded published version read-only', async () => {
+    window.localStorage.setItem('taskforge.accessToken', 'access-token');
+    window.localStorage.setItem('taskforge.refreshToken', 'refresh-token');
+    vi.spyOn(window, 'fetch').mockImplementation((input) => {
+      const path = input instanceof Request ? input.url : String(input);
+      if (path.endsWith('/api/auth/refresh')) {
+        return Promise.resolve(jsonResponse({
+          accessToken: 'new-access-token',
+          refreshToken: 'new-refresh-token',
+          user: { id: '11111111-1111-4111-8111-111111111111', email: 'user@example.com' },
+          organization: { id: '22222222-2222-4222-8222-222222222222', name: 'TaskForge Lab', role: 'OWNER' },
+        }));
+      }
+      if (path.endsWith('/api/workflows')) {
+        return Promise.resolve(jsonResponse([
+          {
+            id: '33333333-3333-4333-8333-333333333333',
+            name: 'Just published workflow',
+            description: 'Demo',
+            status: 'ACTIVE',
+            draftVersionId: null,
+            draftVersionNumber: null,
+            publishedVersionId: '55555555-5555-4555-8555-555555555555',
+            publishedVersionNumber: 1,
+            createdAt: '2026-08-30T00:00:00Z',
+            updatedAt: '2026-08-30T00:00:00Z',
+          },
+        ]));
+      }
+      if (path.endsWith('/api/workflows/33333333-3333-4333-8333-333333333333/draft')) {
+        return Promise.resolve(jsonResponse({
+          workflowId: '33333333-3333-4333-8333-333333333333',
+          versionId: '55555555-5555-4555-8555-555555555555',
+          versionNumber: 1,
+          status: 'PUBLISHED',
+          nodes: [{ nodeKey: 'A', type: 'NO_OP', name: 'Intake', configuration: '{}' }],
+          edges: [],
+        }));
+      }
+      if (path.endsWith('/api/approvals')) {
+        return Promise.resolve(jsonResponse([]));
+      }
+      return Promise.resolve(jsonResponse({}, 404));
+    });
+
+    renderApp();
+
+    await waitFor(() => expect(screen.getByText('Just published workflow')).toBeInTheDocument());
+    expect(await screen.findByText('Published v1 - read-only')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add node' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Validate' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Publish' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Run' })).toBeEnabled();
+  });
 });
 
 function jsonResponse(body: unknown, status = 200): Response {

@@ -23,6 +23,7 @@ import {
   type ApprovalTask,
   type AuthResponse,
   type WorkflowEdge,
+  type WorkflowDraft,
   type WorkflowNode,
   type WorkflowRun,
   type WorkflowSummary,
@@ -269,6 +270,23 @@ function workflowVersionLabel(workflow: WorkflowSummary) {
   return labels.length ? labels.join(' / ') : 'No version';
 }
 
+function workflowBuilderStatusLabel(
+  draft: WorkflowDraft | undefined,
+  workflow: WorkflowSummary | null,
+  draftError: string | null,
+) {
+  if (draft) {
+    if (draft.status === 'PUBLISHED') {
+      return `Published v${draft.versionNumber} - read-only`;
+    }
+    return `Draft v${draft.versionNumber} - ${draft.status}`;
+  }
+  if (draftError && workflow?.publishedVersionNumber !== null && workflow?.publishedVersionNumber !== undefined) {
+    return `Published v${workflow.publishedVersionNumber} - read-only`;
+  }
+  return 'Loading workflow';
+}
+
 function CreateWorkflowPanel({ onCreated }: { onCreated: (workflow: WorkflowSummary) => void }) {
   const form = useForm<WorkflowForm>({
     resolver: zodResolver(workflowSchema),
@@ -321,12 +339,19 @@ function WorkflowWorkspace({
   onRunStarted: (runId: string, runEdges: WorkflowEdge[]) => void;
 }) {
   const queryClient = useQueryClient();
-  const draftQuery = useQuery({ queryKey: ['workflow-draft', workflowId], queryFn: () => getWorkflowDraft(workflowId) });
+  const draftQuery = useQuery({
+    queryKey: ['workflow-draft', workflowId],
+    queryFn: () => getWorkflowDraft(workflowId),
+    retry: false,
+  });
   const [nodes, setNodes] = useState<WorkflowNode[]>(initialNodes);
   const [edges, setEdges] = useState<WorkflowEdge[]>(initialEdges);
   const [validation, setValidation] = useState<string[]>([]);
-  const draftReady = Boolean(draftQuery.data);
-  const canRun = draftReady && Boolean(workflow?.publishedVersionId || draftQuery.data?.status === 'PUBLISHED');
+  const draftError = draftQuery.error instanceof Error ? draftQuery.error.message : null;
+  const hasLoadedVersion = Boolean(draftQuery.data);
+  const hasEditableDraft = draftQuery.data?.status === 'DRAFT';
+  const hasPublishedVersion = Boolean(workflow?.publishedVersionId || draftQuery.data?.status === 'PUBLISHED');
+  const canRun = hasPublishedVersion;
 
   useEffect(() => {
     if (draftQuery.data) {
@@ -364,7 +389,7 @@ function WorkflowWorkspace({
   });
   const runMutation = useMutation({
     mutationFn: () => startWorkflowRun(workflowId),
-    onSuccess: (run) => onRunStarted(run.id, edges),
+    onSuccess: (run) => onRunStarted(run.id, draftQuery.data ? edges : []),
   });
   const currentErrors = [
     saveMutation.error,
@@ -391,7 +416,7 @@ function WorkflowWorkspace({
           <div>
             <h2 className="text-xl font-semibold">Workflow builder</h2>
             <p className="text-sm text-[#52606a]">
-              Draft v{draftQuery.data?.versionNumber ?? '-'} - {draftQuery.data?.status ?? 'loading'}
+              {workflowBuilderStatusLabel(draftQuery.data, workflow, draftError)}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -402,7 +427,7 @@ function WorkflowWorkspace({
                 clearFeedback();
                 saveMutation.mutate();
               }}
-              disabled={saveMutation.isPending || !draftReady}
+              disabled={saveMutation.isPending || !hasEditableDraft}
             >
               Save
             </button>
@@ -413,7 +438,7 @@ function WorkflowWorkspace({
                 clearFeedback();
                 validateMutation.mutate();
               }}
-              disabled={validateMutation.isPending || !draftReady}
+              disabled={validateMutation.isPending || !hasEditableDraft}
             >
               Validate
             </button>
@@ -424,7 +449,7 @@ function WorkflowWorkspace({
                 clearFeedback();
                 publishMutation.mutate();
               }}
-              disabled={publishMutation.isPending || !draftReady}
+              disabled={publishMutation.isPending || !hasEditableDraft}
             >
               Publish
             </button>
@@ -446,22 +471,35 @@ function WorkflowWorkspace({
             </button>
           </div>
         </div>
-        {draftReady ? (
+        {hasLoadedVersion ? (
           <div className="grid gap-5 p-5 lg:grid-cols-[1fr_340px]">
             <GraphView nodes={nodes} edges={edges} />
-            <DraftEditor
-              nodes={nodes}
-              edges={edges}
-              onFeedback={setValidation}
-              onNodesChange={(nextNodes) => {
-                clearFeedback();
-                setNodes(nextNodes);
-              }}
-              onEdgesChange={(nextEdges) => {
-                clearFeedback();
-                setEdges(nextEdges);
-              }}
-            />
+            {hasEditableDraft ? (
+              <DraftEditor
+                nodes={nodes}
+                edges={edges}
+                onFeedback={setValidation}
+                onNodesChange={(nextNodes) => {
+                  clearFeedback();
+                  setNodes(nextNodes);
+                }}
+                onEdgesChange={(nextEdges) => {
+                  clearFeedback();
+                  setEdges(nextEdges);
+                }}
+              />
+            ) : (
+              <div className="rounded-md border border-[#d6dee3] bg-[#fbfcfc] p-4 text-sm text-[#52606a]">
+                This published version is read-only. You can run it, or create a new workflow for new changes.
+              </div>
+            )}
+          </div>
+        ) : draftError ? (
+          <div className="p-5">
+            <div className="rounded-md border border-[#d6dee3] bg-[#fbfcfc] p-4 text-sm text-[#52606a]">
+              This workflow has no editable draft. You can run the latest published version or create a new workflow for
+              new changes.
+            </div>
           </div>
         ) : (
           <div className="p-5 text-sm text-[#52606a]">Loading selected workflow...</div>
