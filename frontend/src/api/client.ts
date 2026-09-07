@@ -39,6 +39,8 @@ const workflowSchema = z.object({
   status: z.string(),
   draftVersionId: z.string().uuid().nullable(),
   draftVersionNumber: z.number().nullable(),
+  publishedVersionId: z.string().uuid().nullable(),
+  publishedVersionNumber: z.number().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });

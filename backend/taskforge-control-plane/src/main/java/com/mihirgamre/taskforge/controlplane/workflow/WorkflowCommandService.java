@@ -63,15 +63,21 @@ public class WorkflowCommandService {
         Instant now = Instant.now(clock);
         Workflow workflow = workflowRepository.save(Workflow.create(organizationId, request.name(), request.description(), now));
         WorkflowVersion draft = versionRepository.save(WorkflowVersion.draft(workflow.id(), 1, now));
-        return WorkflowResponse.from(workflow, draft);
+        return WorkflowResponse.from(workflow, draft, null);
     }
 
     @Transactional(readOnly = true)
     public List<WorkflowResponse> list(UUID organizationId) {
         return workflowRepository.findByOrganizationIdOrderByUpdatedAtDesc(organizationId).stream()
-                .map(workflow -> WorkflowResponse.from(workflow, versionRepository
-                        .findFirstByWorkflowIdAndStatusOrderByVersionNumberDesc(workflow.id(), WorkflowVersionStatus.DRAFT)
-                        .orElse(null)))
+                .map(workflow -> WorkflowResponse.from(
+                        workflow,
+                        versionRepository
+                                .findFirstByWorkflowIdAndStatusOrderByVersionNumberDesc(workflow.id(), WorkflowVersionStatus.DRAFT)
+                                .orElse(null),
+                        versionRepository
+                                .findFirstByWorkflowIdAndStatusOrderByVersionNumberDesc(workflow.id(), WorkflowVersionStatus.PUBLISHED)
+                                .orElse(null)
+                ))
                 .toList();
     }
 
@@ -81,7 +87,10 @@ public class WorkflowCommandService {
         WorkflowVersion draft = versionRepository
                 .findFirstByWorkflowIdAndStatusOrderByVersionNumberDesc(workflowId, WorkflowVersionStatus.DRAFT)
                 .orElse(null);
-        return WorkflowResponse.from(workflow, draft);
+        WorkflowVersion published = versionRepository
+                .findFirstByWorkflowIdAndStatusOrderByVersionNumberDesc(workflowId, WorkflowVersionStatus.PUBLISHED)
+                .orElse(null);
+        return WorkflowResponse.from(workflow, draft, published);
     }
 
     @Transactional(readOnly = true)

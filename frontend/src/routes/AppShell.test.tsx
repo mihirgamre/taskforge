@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { RouterProvider } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createAppRouter } from './router';
@@ -31,9 +32,10 @@ describe('AppShell', () => {
   });
 
   it('renders authenticated workflow management data', async () => {
+    const user = userEvent.setup();
     window.localStorage.setItem('taskforge.accessToken', 'access-token');
     window.localStorage.setItem('taskforge.refreshToken', 'refresh-token');
-    vi.spyOn(window, 'fetch').mockImplementation((input) => {
+    const fetchMock = vi.spyOn(window, 'fetch').mockImplementation((input) => {
       const path = input instanceof Request ? input.url : String(input);
       if (path.endsWith('/api/auth/refresh')) {
         return Promise.resolve(jsonResponse({
@@ -52,6 +54,8 @@ describe('AppShell', () => {
             status: 'ACTIVE',
             draftVersionId: '44444444-4444-4444-8444-444444444444',
             draftVersionNumber: 2,
+            publishedVersionId: null,
+            publishedVersionNumber: null,
             createdAt: '2026-08-30T00:00:00Z',
             updatedAt: '2026-08-30T00:00:00Z',
           },
@@ -75,6 +79,11 @@ describe('AppShell', () => {
     await waitFor(() => expect(screen.getByText('Build pipeline')).toBeInTheDocument());
     expect(screen.getByText('TaskForge Lab')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /workflow builder/i })).toBeInTheDocument();
+
+    const runButton = screen.getByRole('button', { name: 'Run' });
+    expect(runButton).toBeDisabled();
+    await user.click(runButton);
+    expect(fetchMock).not.toHaveBeenCalledWith(expect.stringContaining('/runs'), expect.anything());
   });
 });
 

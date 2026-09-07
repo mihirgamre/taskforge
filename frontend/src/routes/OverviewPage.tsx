@@ -229,7 +229,7 @@ function WorkflowConsole({ auth, onSignOut }: { auth: AuthResponse; onSignOut: (
               >
                 <span className="block font-medium">{workflow.name}</span>
                 <span className="mt-1 block text-xs text-[#52606a]">
-                  Draft v{workflow.draftVersionNumber ?? '-'} - {workflow.status}
+                  {workflowVersionLabel(workflow)} - {workflow.status}
                 </span>
               </button>
             ))}
@@ -238,7 +238,9 @@ function WorkflowConsole({ auth, onSignOut }: { auth: AuthResponse; onSignOut: (
       </aside>
       {selectedWorkflowId ? (
         <WorkflowWorkspace
+          key={selectedWorkflowId}
           workflowId={selectedWorkflowId}
+          workflow={workflowsQuery.data?.find((workflow) => workflow.id === selectedWorkflowId) ?? null}
           activeRunEdges={activeRunEdges}
           activeRunId={activeRunId}
           onRunStarted={(runId, runEdges) => {
@@ -254,6 +256,17 @@ function WorkflowConsole({ auth, onSignOut }: { auth: AuthResponse; onSignOut: (
       )}
     </main>
   );
+}
+
+function workflowVersionLabel(workflow: WorkflowSummary) {
+  const labels = [];
+  if (workflow.draftVersionNumber !== null) {
+    labels.push(`Draft v${workflow.draftVersionNumber}`);
+  }
+  if (workflow.publishedVersionNumber !== null) {
+    labels.push(`Published v${workflow.publishedVersionNumber}`);
+  }
+  return labels.length ? labels.join(' / ') : 'No version';
 }
 
 function CreateWorkflowPanel({ onCreated }: { onCreated: (workflow: WorkflowSummary) => void }) {
@@ -296,11 +309,13 @@ function CreateWorkflowPanel({ onCreated }: { onCreated: (workflow: WorkflowSumm
 
 function WorkflowWorkspace({
   workflowId,
+  workflow,
   activeRunEdges,
   activeRunId,
   onRunStarted,
 }: {
   workflowId: string;
+  workflow: WorkflowSummary | null;
   activeRunEdges: WorkflowEdge[];
   activeRunId: string | null;
   onRunStarted: (runId: string, runEdges: WorkflowEdge[]) => void;
@@ -310,6 +325,7 @@ function WorkflowWorkspace({
   const [nodes, setNodes] = useState<WorkflowNode[]>(initialNodes);
   const [edges, setEdges] = useState<WorkflowEdge[]>(initialEdges);
   const [validation, setValidation] = useState<string[]>([]);
+  const canRun = Boolean(workflow?.publishedVersionId || draftQuery.data?.status === 'PUBLISHED');
 
   useEffect(() => {
     if (draftQuery.data) {
@@ -323,6 +339,7 @@ function WorkflowWorkspace({
     mutationFn: () => saveWorkflowDraft(workflowId, { nodes, edges }),
     onSuccess: (draft) => {
       queryClient.setQueryData(['workflow-draft', workflowId], draft);
+      void queryClient.invalidateQueries({ queryKey: ['workflows'] });
       setValidation([]);
     },
   });
@@ -341,12 +358,30 @@ function WorkflowWorkspace({
     onSuccess: (draft) => {
       queryClient.setQueryData(['workflow-draft', workflowId], draft);
       void queryClient.invalidateQueries({ queryKey: ['workflows'] });
+      setValidation([]);
     },
   });
   const runMutation = useMutation({
     mutationFn: () => startWorkflowRun(workflowId),
     onSuccess: (run) => onRunStarted(run.id, edges),
   });
+  const currentErrors = [
+    saveMutation.error,
+    validateMutation.error,
+    publishMutation.error,
+    runMutation.error,
+  ]
+    .filter((error): error is Error => error instanceof Error)
+    .map((error) => error.message)
+    .concat(validation);
+
+  function clearFeedback() {
+    setValidation([]);
+    saveMutation.reset();
+    validateMutation.reset();
+    publishMutation.reset();
+    runMutation.reset();
+  }
 
   return (
     <div className="grid gap-6">
@@ -359,30 +394,74 @@ function WorkflowWorkspace({
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button className={secondaryButton} type="button" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
+            <button
+              className={secondaryButton}
+              type="button"
+              onClick={() => {
+                clearFeedback();
+                saveMutation.mutate();
+              }}
+              disabled={saveMutation.isPending}
+            >
               Save
             </button>
-            <button className={secondaryButton} type="button" onClick={() => validateMutation.mutate()} disabled={validateMutation.isPending}>
+            <button
+              className={secondaryButton}
+              type="button"
+              onClick={() => {
+                clearFeedback();
+                validateMutation.mutate();
+              }}
+              disabled={validateMutation.isPending}
+            >
               Validate
             </button>
-            <button className={secondaryButton} type="button" onClick={() => publishMutation.mutate()} disabled={publishMutation.isPending}>
+            <button
+              className={secondaryButton}
+              type="button"
+              onClick={() => {
+                clearFeedback();
+                publishMutation.mutate();
+              }}
+              disabled={publishMutation.isPending}
+            >
               Publish
             </button>
-            <button className={primaryButton} type="button" onClick={() => runMutation.mutate()} disabled={runMutation.isPending}>
+            <button
+              className={primaryButton}
+              type="button"
+              onClick={() => {
+                clearFeedback();
+                if (!canRun) {
+                  setValidation(['Publish this workflow before running it.']);
+                  return;
+                }
+                runMutation.mutate();
+              }}
+              disabled={runMutation.isPending || !canRun}
+              title={canRun ? undefined : 'Publish this workflow before running it.'}
+            >
               Run
             </button>
           </div>
         </div>
         <div className="grid gap-5 p-5 lg:grid-cols-[1fr_340px]">
           <GraphView nodes={nodes} edges={edges} />
-          <DraftEditor nodes={nodes} edges={edges} onNodesChange={setNodes} onEdgesChange={setEdges} />
+          <DraftEditor
+            nodes={nodes}
+            edges={edges}
+            onFeedback={setValidation}
+            onNodesChange={(nextNodes) => {
+              clearFeedback();
+              setNodes(nextNodes);
+            }}
+            onEdgesChange={(nextEdges) => {
+              clearFeedback();
+              setEdges(nextEdges);
+            }}
+          />
         </div>
-        <ActionState
-          errors={[saveMutation.error, validateMutation.error, publishMutation.error, runMutation.error]
-            .filter((error): error is Error => error instanceof Error)
-            .map((error) => error.message)
-            .concat(validation)}
-        />
+        <ActionState errors={currentErrors} />
       </section>
       <RunPanel runId={activeRunId} edges={activeRunEdges} />
       <ApprovalPanel runId={activeRunId} />
@@ -393,11 +472,13 @@ function WorkflowWorkspace({
 function DraftEditor({
   nodes,
   edges,
+  onFeedback,
   onNodesChange,
   onEdgesChange,
 }: {
   nodes: WorkflowNode[];
   edges: WorkflowEdge[];
+  onFeedback: (errors: string[]) => void;
   onNodesChange: (nodes: WorkflowNode[]) => void;
   onEdgesChange: (edges: WorkflowEdge[]) => void;
 }) {
@@ -416,10 +497,16 @@ function DraftEditor({
         className="grid gap-3 rounded-md border border-[#d6dee3] p-4"
         onSubmit={(event) => {
           void nodeForm.handleSubmit((value) => {
+            try {
+              JSON.parse(value.configuration);
+            } catch {
+              onFeedback(['Node configuration must be valid JSON.']);
+              return;
+            }
             const nextNode = { ...value };
             onNodesChange([...nodes.filter((node) => node.nodeKey !== value.nodeKey), nextNode]);
             nodeForm.reset({ nodeKey: '', type: 'NO_OP', name: '', configuration: '{}' });
-          })(event);
+          }, () => onFeedback(['Node key, type, and name are required.']))(event);
         }}
       >
         <h3 className="font-semibold">Nodes</h3>
@@ -465,9 +552,17 @@ function DraftEditor({
         className="grid gap-3 rounded-md border border-[#d6dee3] p-4"
         onSubmit={(event) => {
           void edgeForm.handleSubmit((value) => {
+            if (value.sourceNodeKey === value.targetNodeKey) {
+              onFeedback([`Self edge is not allowed: ${value.sourceNodeKey}`]);
+              return;
+            }
+            if (edges.some((edge) => edge.sourceNodeKey === value.sourceNodeKey && edge.targetNodeKey === value.targetNodeKey)) {
+              onFeedback([`Duplicate edge: ${value.sourceNodeKey}->${value.targetNodeKey}`]);
+              return;
+            }
             onEdgesChange([...edges, value]);
             edgeForm.reset({ sourceNodeKey: '', targetNodeKey: '' });
-          })(event);
+          }, () => onFeedback(['Edge source and target are required.']))(event);
         }}
       >
         <h3 className="font-semibold">Edges</h3>

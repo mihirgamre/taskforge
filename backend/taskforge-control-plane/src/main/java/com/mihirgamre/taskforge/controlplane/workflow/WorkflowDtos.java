@@ -45,10 +45,12 @@ record WorkflowResponse(
         String status,
         UUID draftVersionId,
         Integer draftVersionNumber,
+        UUID publishedVersionId,
+        Integer publishedVersionNumber,
         Instant createdAt,
         Instant updatedAt
 ) {
-    static WorkflowResponse from(Workflow workflow, WorkflowVersion draft) {
+    static WorkflowResponse from(Workflow workflow, WorkflowVersion draft, WorkflowVersion published) {
         return new WorkflowResponse(
                 workflow.id(),
                 workflow.name(),
@@ -56,6 +58,8 @@ record WorkflowResponse(
                 workflow.status().name(),
                 draft == null ? null : draft.id(),
                 draft == null ? null : draft.versionNumber(),
+                published == null ? null : published.id(),
+                published == null ? null : published.versionNumber(),
                 workflow.createdAt(),
                 workflow.updatedAt()
         );
