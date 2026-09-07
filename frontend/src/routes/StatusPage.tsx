@@ -5,15 +5,15 @@ export function StatusPage() {
       <dl className="mt-6 grid gap-4 md:grid-cols-3">
         <div className="rounded-md border border-[#d6dee3] bg-white p-4">
           <dt className="text-sm font-medium text-[#52606a]">Backend</dt>
-          <dd className="mt-1 text-lg font-semibold">M3 complete</dd>
+          <dd className="mt-1 text-lg font-semibold">M7 complete</dd>
         </div>
         <div className="rounded-md border border-[#d6dee3] bg-white p-4">
           <dt className="text-sm font-medium text-[#52606a]">Frontend</dt>
-          <dd className="mt-1 text-lg font-semibold">M4 console</dd>
+          <dd className="mt-1 text-lg font-semibold">Workflow console</dd>
         </div>
         <div className="rounded-md border border-[#d6dee3] bg-white p-4">
           <dt className="text-sm font-medium text-[#52606a]">Execution</dt>
-          <dd className="mt-1 text-lg font-semibold">DAG + reliability active</dd>
+          <dd className="mt-1 text-lg font-semibold">DAG + automation active</dd>
         </div>
       </dl>
     </main>

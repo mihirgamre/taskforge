@@ -120,7 +120,7 @@ function AuthPanel({ onAuthenticated }: { onAuthenticated: (auth: AuthResponse) 
     <main className="mx-auto grid max-w-7xl gap-8 px-6 py-8 lg:grid-cols-[1fr_1.2fr]">
       <section className="flex min-h-[520px] flex-col justify-between rounded-md border border-[#d6dee3] bg-white p-6">
         <div>
-          <p className="text-sm font-medium uppercase tracking-wide text-[#4e6b74]">M4 Console</p>
+          <p className="text-sm font-medium uppercase tracking-wide text-[#4e6b74]">TaskForge Console</p>
           <h2 className="mt-2 text-3xl font-semibold">Build and run authenticated workflow DAGs.</h2>
           <p className="mt-4 max-w-xl text-[#52606a]">
             Sign in to create editable workflow drafts, validate dependencies, publish immutable versions, and track run state.
