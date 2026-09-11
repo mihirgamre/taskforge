@@ -19,7 +19,7 @@ Do not automatically read the entire spec, all ADRs, all architecture docs, all 
 - `backend/`: Java/Spring Boot Maven modules for control plane, scheduler, worker, and shared domain.
 - `frontend/`: React/TypeScript/Vite application.
 - `contracts/`: API and event schemas.
-- `docs/`: status, roadmap, decisions, architecture notes, and interview notes.
+- `docs/`: status, roadmap, decisions, architecture notes, security, testing, and deployment docs.
 - `infra/`, `load-tests/`, `.github/`: infrastructure, performance tests, and CI/CD assets.
 
 ## Development Workflow

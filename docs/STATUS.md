@@ -4,7 +4,7 @@ Last updated: 2026-09-07
 
 ## Latest Completed Milestone
 
-M7 - Cloud + Portfolio Completion.
+M7 - Cloud + Project Completion.
 
 ## Completed
 
@@ -15,7 +15,7 @@ M7 - Cloud + Portfolio Completion.
 - M4 workflow product UI is implemented for authenticated workflow management, draft editing, DAG visualization, validation, publishing, run creation, and run tracking.
 - M5 automation capabilities are implemented for additional task types, manual approvals, API keys, API triggers, and durable schedules.
 - M6 production reliability foundations are implemented for request correlation, request logging, Prometheus/Grafana local observability, HTTP response redaction, and k6 smoke load testing.
-- M7 cloud and portfolio readiness is implemented with AWS Terraform, CI/CD hardening, security workflows, deployment docs, and portfolio notes.
+- M7 cloud readiness is implemented with AWS Terraform, CI/CD hardening, security workflows, and deployment documentation.
 - Existing Phase 1 path remains: `POST /api/tasks/noop` -> PostgreSQL `PENDING` task -> scheduler claim -> Kafka dispatch -> worker completion -> PostgreSQL `SUCCEEDED`.
 
 ## Implemented
@@ -70,7 +70,7 @@ M7 - Cloud + Portfolio Completion.
 - M6 HTTP task safety is still application-level validation, not a network egress sandbox; DNS rebinding protection and infrastructure egress allowlists remain deployment work.
 - Notification/report tasks currently persist/log-style results only; real email/chat integrations remain future handler work.
 - k6 thresholds are smoke-level local guardrails, not production capacity claims.
-- Resume metrics remain limited to locally verified checks until a real cloud environment is measured.
+- Production metrics remain limited to locally verified checks until a real cloud environment is measured.
 
 ## Verification Notes
 
@@ -79,4 +79,4 @@ M7 - Cloud + Portfolio Completion.
 
 ## Next Milestone
 
-No remaining implementation milestone. Remaining work is optional deployment/demo presentation polish.
+No remaining implementation milestone. Remaining work is optional deployment and demo polish.

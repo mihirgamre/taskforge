@@ -46,13 +46,13 @@ Includes OpenTelemetry, Prometheus, Grafana, structured logging, security harden
 
 M6 provides local production-reliability foundations: request correlation IDs, structured request logs, Prometheus metrics endpoints for all backend services, optional local Prometheus/Grafana Compose services, HTTP task body redaction, and a k6 smoke load script. Capacity tuning and externally verified production metrics remain M7/deployment work.
 
-## M7 - Cloud + Portfolio Completion
+## M7 - Cloud + Project Completion
 
 Status: COMPLETE.
 
-Includes AWS, Terraform, ECS/Fargate, RDS, managed Redis/Kafka approach, CI/CD hardening, vulnerability scanning, README, diagrams, screenshots/demo, final interview notes, and verified resume metrics.
+Includes AWS, Terraform, ECS/Fargate, RDS, managed Redis/Kafka approach, CI/CD hardening, vulnerability scanning, README, diagrams, screenshots/demo, and verified project documentation.
 
-M7 provides an AWS ECS/Fargate Terraform blueprint, hardened GitHub Actions CI/security/deploy workflows, deployment documentation, and portfolio/demo notes. Production metrics are intentionally limited to local verification results until the Terraform environment is applied and measured.
+M7 provides an AWS ECS/Fargate Terraform blueprint, hardened GitHub Actions CI/security/deploy workflows, and deployment documentation. Production metrics are intentionally limited to local verification results until the Terraform environment is applied and measured.
 
 ## Old Phase Mapping
 
